@@ -2,10 +2,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
-from db import init_db, register_user, authenticate_user
 
 st.set_page_config(page_title="RemoteTech", page_icon="🚀", layout="wide")
-init_db()
 
 # Kid-Friendly CSS
 st.markdown("""
@@ -33,28 +31,10 @@ if 'badges' not in st.session_state:
     st.session_state.badges = ["🔥 First Spell", "🛒 Spaza Boss"]
 if 'completed_lessons' not in st.session_state:
     st.session_state.completed_lessons = set()
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-if 'user' not in st.session_state:
-    st.session_state.user = None
-
-if st.session_state.authenticated:
-    st.sidebar.success(f"Signed in as {st.session_state.user['display_name']}")
-    if st.sidebar.button("Log out"):
-        st.session_state.authenticated = False
-        st.session_state.user = None
-        st.rerun()
-
-if st.session_state.authenticated:
-    page = st.sidebar.radio("Choose your adventure:",
-                            ["🏠 Home Base", "📚 Learning Quests", "🛒 Spaza Shop Project", "🧪 Magic Code Lab",
-                             "🏆 Hero Leaderboard", "📊 Village Impact"])
-else:
-    page = "🔐 Login / Register"
 
 # ====================== HOME ======================
 if page == "🏠 Home Base":
-    st.markdown(f"## Welcome back, *{st.session_state.user['display_name']}*! 👋 You're a superstar! 🔥")
+    st.markdown(f"## Welcome back, *Akhona*! 👋 You're a superstar! 🔥")
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -68,44 +48,7 @@ if page == "🏠 Home Base":
         st.success("🎓 You are close to earning your Certificate!")
         if st.button("Claim Certificate 🏅", type="primary"):
             st.session_state.show_certificate = True
-            st.rerun()
-
-# ====================== AUTH ======================
-elif page == "🔐 Login / Register":
-    st.header("🔐 Login / Register")
-    st.write("Create your account or log in to continue your coding adventure.")
-
-    login_tab, register_tab = st.tabs(["Login", "Register"])
-
-    with login_tab:
-        login_username = st.text_input("Username", key="login_username")
-        login_password = st.text_input("Password", type="password", key="login_password")
-
-        if st.button("Login", key="login_button", type="primary"):
-            ok, user_data = authenticate_user(login_username, login_password)
-            if ok:
-                st.session_state.authenticated = True
-                st.session_state.user = user_data
-                st.success(f"Welcome back, {user_data['display_name']}!")
-                st.rerun()
-            else:
-                st.error("Invalid username or password.")
-
-    with register_tab:
-        display_name = st.text_input("Display Name", key="register_display_name")
-        reg_username = st.text_input("Choose a Username", key="register_username")
-        reg_password = st.text_input("Choose a Password", type="password", key="register_password")
-        reg_confirm = st.text_input("Confirm Password", type="password", key="register_confirm")
-
-        if st.button("Register", key="register_button"):
-            if reg_password != reg_confirm:
-                st.error("Passwords do not match.")
-            else:
-                ok, message = register_user(reg_username, reg_password, display_name)
-                if ok:
-                    st.success("Registration successful. You can now log in.")
-                else:
-                    st.error(message)
+            st.switch_page("Home Base")  # Refresh
 
 # ====================== LEARNING QUESTS (with hints & better validation) ======================
 elif page == "📚 Learning Quests":
@@ -219,4 +162,4 @@ elif page == "🧪 Magic Code Lab":
 
 # Leaderboard & Impact pages remain similar...
 
-st.caption("RemoteTech © 2026 • Sterkspruit Pilot • Eastern Cape")
+st.caption("RemoteTech ©️ 2026 • Sterkspruit Pilot • Eastern Cape")
