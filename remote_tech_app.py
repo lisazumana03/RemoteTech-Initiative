@@ -2,14 +2,39 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
+import sqlite3
 
 st.set_page_config(page_title="RemoteTech", page_icon="🚀", layout="wide")
+
+def init_db():
+    conn = sqlite3.connect('heroes.db')
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            name TEXT,
+            points INTEGER,
+            badges TEXT
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS progress (
+            user_id INTEGER,
+            lesson_id TEXT,
+            completed BOOLEAN,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+    init_db()  # Initialize database on app start
 
 # Kid-Friendly CSS
 st.markdown("""
 <style>
     .main {background-color: #0f172a; color: #e0f2fe;}
-    h1, h2, h3 {color: #22d3ee; font-family: 'Comic Sans MS', cursive;}
+    h1, h2, h3 {color: #22d3ee; font-family: 'Arial', cursive;}
     .stButton>button {background-color: #22d3ee; color: #0f172a; font-size: 18px; font-weight: bold; border-radius: 20px;}
     .hint {background-color: #334155; padding: 12px; border-radius: 12px; border-left: 5px solid #eab308;}
     .certificate {background: linear-gradient(135deg, #1e3a8a, #3b82f6); padding: 40px; border-radius: 20px; text-align: center; color: white;}
@@ -22,7 +47,7 @@ st.markdown("### *Sterkspruit Heroes – Learn Python & Build Your Future!* 🌟
 st.sidebar.markdown("## 🎮 Menu")
 page = st.sidebar.radio("Choose your adventure:",
                         ["🏠 Home Base", "📚 Learning Quests", "🛒 Spaza Shop Project", "🧪 Magic Code Lab",
-                         "🏆 Hero Leaderboard", "📊 Village Impact"])
+                         "🏆 Hero Leaderboard", "📊 Village Impact", "Sign Out"])
 
 # Session State
 if 'points' not in st.session_state:
@@ -32,9 +57,18 @@ if 'badges' not in st.session_state:
 if 'completed_lessons' not in st.session_state:
     st.session_state.completed_lessons = set()
 
+# ======================AUTHENTICATION (Login/ Register) (Simple for demo) ======================
+# Login and registration logic can be added here, but for simplicity, we will assume the user is already authenticated and has a name stored in session state.
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = True
+    st.session_state.user_name = "Akhona M."  # This would come from the login system
+    st.session_state.points = 850
+    st.session_state.badges = ["🔥 First Spell", "🛒 Spaza Boss"]
+    st.session_state.completed_lessons = set()
+
 # ====================== HOME ======================
 if page == "🏠 Home Base":
-    st.markdown(f"## Welcome back, *Akhona*! 👋 You're a superstar! 🔥")
+    st.markdown(f"## Welcome back, *{st.session_state.user_name}*! 👋 You're a superstar! 🔥")
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -238,6 +272,7 @@ elif page == "🧪 Magic Code Lab":
 elif page == "🏆 Hero Leaderboard":
     st.header("🏆 Hero Leaderboard")
     leaderboard_data = {
+        "Position": [1, 2, 3, 4],
         "Hero": ["Akhona M.", "Sipho D.", "Lerato K.", "Thabo N."],
         "Points": [850, 720, 680, 600],
         "Badges": ["🔥 First Spell, 🛒 Spaza Boss", "🔥 First Spell", "🛒 Spaza Boss", ""]
@@ -255,5 +290,13 @@ elif page == "📊 Village Impact":
     impact_df = pd.DataFrame(impact_data)
     fig = px.pie(impact_df, names="Category", values="Impact Score", title="Coding Impact Distribution")
     st.plotly_chart(fig)
+
+elif page == "Sign Out":
+    st.session_state.authenticated = False
+    st.session_state.points = 0
+    st.session_state.badges = []
+    st.session_state.completed_lessons = set()
+    st.success("You have signed out. See you next time! 👋")
+    st.stop()
 
 st.caption("RemoteTech ©️ 2026 • Sterkspruit Pilot • Eastern Cape")
