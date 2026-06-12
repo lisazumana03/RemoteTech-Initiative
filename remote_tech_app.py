@@ -117,16 +117,50 @@ elif page == "📚 Learning Quests":
                     st.error("Check your conditions!")
             else:
                 st.warning("Hint: Use if-elif to check the weather and print decisions.")
-    # (Other quests 2-5 similar - shortened here for brevity)
+    
+    #Quest 4
+    if lesson_choice == "4. Spaza Restocking Loops":
+        st.markdown("### 📦 *Quest 4: Spaza Restocking Loops*")
+        st.write("Use a for loop to restock items.")
+        code = st.text_area("Write your code:",
+                            '''items = ["Bread", "Milk", "Chips"]\nfor item in items:\n    print("Restocking " + item)''', height=180)
+        if st.button("Restock ✨", key="q4"):
+            if "for item in items" in code and "print" in code:
+                try:
+                    exec(code)
+                    st.success("🎉 Well done! +150 points")
+                    st.session_state.points += 150
+                    st.session_state.completed_lessons.add("4")
+                    st.balloons()
+                except:
+                    st.error("Check your loop syntax!")
+            else:
+                st.warning("Hint: Use a for loop to go through items and print restocking messages.")
+    
+    # Quest 5
+    if lesson_choice == "5. Super Functions":
+        st.markdown("### 🦸 *Quest 5: Super Functions*")
+        st.write("Create a function to calculate total price.")
+        code = st.text_area("Write your code:",
+                            '''def calculate_total(prices):\n    total = sum(prices)\n    return total\n\nprices = [15, 18, 12]\ntotal_price = calculate_total(prices)\nprint("Total Price: R" + str(total_price))''', height=250)
+        if st.button("Calculate Total ✨", key="q5"):
+            if "def calculate_total" in code and "return total" in code:
+                try:
+                    exec(code)
+                    st.success("🎉 Fantastic! +150 points")
+                    st.session_state.points += 150
+                    st.session_state.completed_lessons.add("5")
+                    st.balloons()
+                except:
+                    st.error("Check your function definition and return statement!")
+            else:
+                st.warning("Hint: Define a function that takes prices, calculates total using sum(), and returns it.")
+    # Quest 6
     elif lesson_choice == "6. Super Spaza List Magic":
         st.markdown("### ✨ *Quest 6: Super Spaza List Magic*")
         st.write("Use list comprehensions to update prices.")
         code = st.text_area("Write your list comprehensions:",
-                            '''prices = [12, 18, 25, 8, 30]
-                            new_prices = [p + 3 for p in prices]
-                            expensive = [p for p in prices if p > 20]
-                            print(new_prices)
-                            print(expensive)''', height=250)
+                            '''prices = [12, 18, 25, 8, 30]\nnew_prices = [p + 3 for p in prices]\nexpensive = [p for p in prices if p > 20]\nprint(new_prices)\nprint(expensive)''', height=250)
         if st.button("✨ Cast Magic!", key="q6"):
             if "for p in prices" in code and "if p >" in code:
                 try:
@@ -139,7 +173,7 @@ elif page == "📚 Learning Quests":
                     st.error("Small error")
             else:
                 st.info("*Hint:* Use [p + 3 for p in prices] and [p for p in prices if p > 20]")
-
+    
     # ... (I kept quests 2-5 similar to previous version with hints added)
 
 # ====================== NEW MINI PROJECT ======================
