@@ -234,4 +234,26 @@ elif page == "🧪 Magic Code Lab":
 
 # Leaderboard & Impact pages remain similar...
 
+# Leaderboard to be presented in a form of a table with points and badges
+elif page == "🏆 Hero Leaderboard":
+    st.header("🏆 Hero Leaderboard")
+    leaderboard_data = {
+        "Hero": ["Akhona M.", "Sipho D.", "Lerato K.", "Thabo N."],
+        "Points": [850, 720, 680, 600],
+        "Badges": ["🔥 First Spell, 🛒 Spaza Boss", "🔥 First Spell", "🛒 Spaza Boss", ""]
+    }
+    leaderboard_df = pd.DataFrame(leaderboard_data)
+    st.table(leaderboard_df)
+
+elif page == "📊 Village Impact":
+    st.header("📊 Village Impact")
+    st.markdown("### 🌍 *Coding Impact in Sterkspruit*")
+    impact_data = {
+        "Category": ["Education", "Employment", "Community Projects", "Tech Awareness"],
+        "Impact Score": [85, 70, 60, 90]
+    }
+    impact_df = pd.DataFrame(impact_data)
+    fig = px.pie(impact_df, names="Category", values="Impact Score", title="Coding Impact Distribution")
+    st.plotly_chart(fig)
+
 st.caption("RemoteTech ©️ 2026 • Sterkspruit Pilot • Eastern Cape")
