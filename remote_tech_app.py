@@ -25,23 +25,6 @@ page = st.sidebar.radio("Choose your adventure:",
                         ["🏠 Home Base", "📚 Learning Quests", "🛒 Spaza Shop Project", "🧪 Magic Code Lab",
                          "🏆 Hero Leaderboard", "📊 Village Impact", "Sign Out"])
 
-# Session State
-if 'points' not in st.session_state:
-    st.session_state.points = 850
-if 'badges' not in st.session_state:
-    st.session_state.badges = ["🔥 First Spell", "🛒 Spaza Boss"]
-if 'completed_lessons' not in st.session_state:
-    st.session_state.completed_lessons = set()
-
-# ======================AUTHENTICATION (Login/ Register) (Simple for demo) ======================
-# Login and registration logic can be added here, but for simplicity, we will assume the user is already authenticated and has a name stored in session state.
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = True
-    st.session_state.user_name = "Akhona M."  # This would come from the login system
-    st.session_state.points = 850
-    st.session_state.badges = ["🔥 First Spell", "🛒 Spaza Boss"]
-    st.session_state.completed_lessons = set()
-
 # ====================== HOME ======================
 if page == "🏠 Home Base":
     st.markdown(f"## Welcome back, *{st.session_state.user_name}*! 👋 You're a superstar! 🔥")
@@ -58,7 +41,7 @@ if page == "🏠 Home Base":
         st.success("🎓 You are close to earning your Certificate!")
         if st.button("Claim Certificate 🏅", type="primary"):
             st.session_state.show_certificate = True
-            st.switch_page("Home Base")  # Refresh
+            st.rerun()
 
 # ====================== LEARNING QUESTS (with hints & better validation) ======================
 elif page == "📚 Learning Quests":
@@ -269,10 +252,13 @@ elif page == "📊 Village Impact":
 
 elif page == "Sign Out":
     st.session_state.authenticated = False
+    st.session_state.user_name = ""
     st.session_state.points = 0
     st.session_state.badges = []
     st.session_state.completed_lessons = set()
+    st.session_state.show_certificate = False
     st.success("You have signed out. See you next time! 👋")
+    st.switch_page("login.py")
     st.stop()
 
 st.caption("RemoteTech ©️ 2026 • Sterkspruit Pilot • Eastern Cape")

@@ -1,11 +1,9 @@
 import streamlit as st
 
 st.set_page_config(page_title="Login", page_icon="🔐")
-
-# Initialize session state for authentication
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-    st.session_state.user_name = ""
+def go_to_main_app():
+    st.experimental_set_query_params(page="main_app")
+    
 st.title("🔐 RemoteTech Login")
 # Login form
 with st.form("login_form"):
@@ -18,10 +16,13 @@ with st.form("login_form"):
         if user_name == "akhona" and password == "password123":
             st.session_state.authenticated = True
             st.session_state.user_name = user_name
+            st.session_state.points = 850
+            st.session_state.badges = ["🔥 First Spell", "🛒 Spaza Boss"]
+            st.session_state.completed_lessons = set()
             st.success("Login successful! Welcome to RemoteTech! 🚀")
+            st.switch_page("remote_tech_app.py")
         else:
             st.error("Invalid credentials. Please try again.")
 
-# If not registered, the user can sign up (for demo, this just shows a message) (Sign up on register.py)
-if st.button("Don't have an account? Sign Up"):
-    st.info("Please contact your administrator to create an account. (Sign up on register.py)")
+
+
