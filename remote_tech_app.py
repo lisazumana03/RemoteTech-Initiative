@@ -79,6 +79,44 @@ elif page == "📚 Learning Quests":
             else:
                 st.warning("Hint: Create variables then calculate total and print it.")
 
+    # Quest 2
+    if lesson_choice == "2. Taxi Fare Calculator":
+        st.markdown("### 🚕 *Quest 2: Taxi Fare Calculator*")
+        st.write("Calculate taxi fare based on distance and rate.")
+        code = st.text_area("Write your code:",
+                            '''distance = 10\nrate = 5\nfare = distance * rate\nprint("Fare: R" + str(fare))''', height=180)
+        if st.button("Calculate Fare ✨", key="q2"):
+            if "fare" in code and "print" in code:
+                try:
+                    exec(code)
+                    st.success("🎉 Great! +150 points")
+                    st.session_state.points += 150
+                    st.session_state.completed_lessons.add("2")
+                    st.balloons()
+                except:
+                    st.error("Check your calculations!")
+            else:
+                st.warning("Hint: Calculate fare using distance and rate, then print it.")
+
+    # Quest 3 (Grading system according to the South African school system)
+    if lesson_choice == "3. Rainy Day Decisions":
+        st.markdown("### 🌧️ *Quest 3: Rainy Day Decisions*")
+        st.write("Use if-else to decide what to do on a rainy day.")
+        code = st.text_area("Write your code:",
+                            '''weather = "rainy"\nif weather == "sunny":\n    print("Go outside and play!")\nelif weather == "rainy":\n    print("Stay inside and read a book!")\nelse:\n    print("Check the weather again!")''',
+                            height=250)
+        if st.button("Decide ✨", key="q3"):
+            if "if weather" in code and "elif weather" in code:
+                try:
+                    exec(code)
+                    st.success("🎉 Excellent! +150 points")
+                    st.session_state.points += 150
+                    st.session_state.completed_lessons.add("3")
+                    st.balloons()
+                except:
+                    st.error("Check your conditions!")
+            else:
+                st.warning("Hint: Use if-elif to check the weather and print decisions.")
     # (Other quests 2-5 similar - shortened here for brevity)
     elif lesson_choice == "6. Super Spaza List Magic":
         st.markdown("### ✨ *Quest 6: Super Spaza List Magic*")
