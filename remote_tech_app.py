@@ -6,30 +6,6 @@ import sqlite3
 
 st.set_page_config(page_title="RemoteTech", page_icon="🚀", layout="wide")
 
-def init_db():
-    conn = sqlite3.connect('heroes.db')
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY,
-            name TEXT,
-            points INTEGER,
-            badges TEXT
-        )
-    ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS progress (
-            user_id INTEGER,
-            lesson_id TEXT,
-            completed BOOLEAN,
-            FOREIGN KEY(user_id) REFERENCES users(id)
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-    init_db()  # Initialize database on app start
-
 # Kid-Friendly CSS
 st.markdown("""
 <style>
