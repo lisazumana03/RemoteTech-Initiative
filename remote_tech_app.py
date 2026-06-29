@@ -59,7 +59,7 @@ st.markdown("### *Sterkspruit Heroes – Learn Python & Build Your Future!* 🌟
 st.sidebar.markdown("## 🎮 Menu")
 page = st.sidebar.radio("Choose your adventure:",
                         ["🏠 Home Base", "📚 Learning Quests", "🛒 Spaza Shop Project", "🧪 Magic Code Lab",
-                         "🏆 Hero Leaderboard", "📊 Village Impact", "Sign Out"])
+                         "🏆 Hero Leaderboard", "📊 Village Impact"])
 
 # ====================== HOME ======================
 if page == "🏠 Home Base":
