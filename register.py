@@ -11,6 +11,8 @@ username = st.text_input("Username")
 email = st.text_input("Email")
 password = st.text_input("Password", type="password")
 confirm_password = st.text_input("Confirm Password", type="password")
+#Checkbox for terms and conditions
+terms_accepted = st.checkbox("I agree to the Terms and Conditions")
 
 if st.button("Register"):
 
@@ -19,6 +21,9 @@ if st.button("Register"):
 
     elif password != confirm_password:
         st.error("Passwords do not match.")
+
+    elif not terms_accepted:
+        st.error("Please agree to the Terms and Conditions.")
 
     else:
         success = register_user(
