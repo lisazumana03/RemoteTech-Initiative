@@ -1,10 +1,46 @@
 import streamlit as st
+
+if not st.session_state.get("authenticated", False):
+    st.warning("Please login first.")
+    st.switch_page("login.py")
+    st.stop()
+
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
-import sqlite3
+from remotetech_data import init_db, save_user_progress
 
 st.set_page_config(page_title="RemoteTech", page_icon="🚀", layout="wide")
+init_db()
+
+# Ensure required session state keys exist before page rendering.
+if 'authenticated' not in st.session_state:
+    st.session_state.authenticated = False
+if 'user_name' not in st.session_state:
+    st.session_state.user_name = ""
+if 'db_user_name' not in st.session_state:
+    st.session_state.db_user_name = None
+if 'points' not in st.session_state:
+    st.session_state.points = 0
+if 'badges' not in st.session_state:
+    st.session_state.badges = []
+if 'completed_lessons' not in st.session_state:
+    st.session_state.completed_lessons = set()
+if 'show_certificate' not in st.session_state:
+    st.session_state.show_certificate = False
+
+
+def persist_progress():
+    db_user_name = st.session_state.get('db_user_name')
+    if not db_user_name:
+        return
+
+    save_user_progress(
+        db_user_name,
+        st.session_state.points,
+        st.session_state.badges,
+        st.session_state.completed_lessons,
+    )
 
 # Kid-Friendly CSS
 st.markdown("""
@@ -63,10 +99,14 @@ elif page == "📚 Learning Quests":
             if "total" in code and "print" in code:
                 try:
                     exec(code)
-                    st.success("🎉 Perfect! +150 points")
-                    st.session_state.points += 150
-                    st.session_state.completed_lessons.add("1")
-                    st.balloons()
+                    if "1" in st.session_state.completed_lessons:
+                        st.info("Quest 1 is already completed. Your progress has been saved.")
+                    else:
+                        st.session_state.points += 150
+                        st.session_state.completed_lessons.add("1")
+                        persist_progress()
+                        st.success("🎉 Perfect! +150 points")
+                        st.balloons()
                 except:
                     st.error("Almost! Check your code.")
             else:
@@ -82,10 +122,14 @@ elif page == "📚 Learning Quests":
             if "fare" in code and "print" in code:
                 try:
                     exec(code)
-                    st.success("🎉 Great! +150 points")
-                    st.session_state.points += 150
-                    st.session_state.completed_lessons.add("2")
-                    st.balloons()
+                    if "2" in st.session_state.completed_lessons:
+                        st.info("Quest 2 is already completed. Your progress has been saved.")
+                    else:
+                        st.session_state.points += 150
+                        st.session_state.completed_lessons.add("2")
+                        persist_progress()
+                        st.success("🎉 Great! +150 points")
+                        st.balloons()
                 except:
                     st.error("Check your calculations!")
             else:
@@ -102,10 +146,14 @@ elif page == "📚 Learning Quests":
             if "if weather" in code and "elif weather" in code:
                 try:
                     exec(code)
-                    st.success("🎉 Excellent! +150 points")
-                    st.session_state.points += 150
-                    st.session_state.completed_lessons.add("3")
-                    st.balloons()
+                    if "3" in st.session_state.completed_lessons:
+                        st.info("Quest 3 is already completed. Your progress has been saved.")
+                    else:
+                        st.session_state.points += 150
+                        st.session_state.completed_lessons.add("3")
+                        persist_progress()
+                        st.success("🎉 Excellent! +150 points")
+                        st.balloons()
                 except:
                     st.error("Check your conditions!")
             else:
@@ -121,10 +169,14 @@ elif page == "📚 Learning Quests":
             if "for item in items" in code and "print" in code:
                 try:
                     exec(code)
-                    st.success("🎉 Well done! +150 points")
-                    st.session_state.points += 150
-                    st.session_state.completed_lessons.add("4")
-                    st.balloons()
+                    if "4" in st.session_state.completed_lessons:
+                        st.info("Quest 4 is already completed. Your progress has been saved.")
+                    else:
+                        st.session_state.points += 150
+                        st.session_state.completed_lessons.add("4")
+                        persist_progress()
+                        st.success("🎉 Well done! +150 points")
+                        st.balloons()
                 except:
                     st.error("Check your loop syntax!")
             else:
@@ -140,10 +192,14 @@ elif page == "📚 Learning Quests":
             if "def calculate_total" in code and "return total" in code:
                 try:
                     exec(code)
-                    st.success("🎉 Fantastic! +150 points")
-                    st.session_state.points += 150
-                    st.session_state.completed_lessons.add("5")
-                    st.balloons()
+                    if "5" in st.session_state.completed_lessons:
+                        st.info("Quest 5 is already completed. Your progress has been saved.")
+                    else:
+                        st.session_state.points += 150
+                        st.session_state.completed_lessons.add("5")
+                        persist_progress()
+                        st.success("🎉 Fantastic! +150 points")
+                        st.balloons()
                 except:
                     st.error("Check your function definition and return statement!")
             else:
@@ -158,10 +214,14 @@ elif page == "📚 Learning Quests":
             if "for p in prices" in code and "if p >" in code:
                 try:
                     exec(code)
-                    st.success("🎉 Masterful! +280 points")
-                    st.session_state.points += 280
-                    st.session_state.completed_lessons.add("6")
-                    st.balloons()
+                    if "6" in st.session_state.completed_lessons:
+                        st.info("Quest 6 is already completed. Your progress has been saved.")
+                    else:
+                        st.session_state.points += 280
+                        st.session_state.completed_lessons.add("6")
+                        persist_progress()
+                        st.success("🎉 Masterful! +280 points")
+                        st.balloons()
                 except:
                     st.error("Small error")
             else:
@@ -190,11 +250,15 @@ print("Total: R", calculate_total(cart))
     if st.button("🚀 Launch Spaza Shop", type="primary"):
         try:
             exec(code)
-            st.success("🎉 *Congratulations!* You built a full Spaza Shop System!")
-            st.session_state.points += 500
-            st.session_state.badges.append("🛒 Spaza Tycoon")
-            st.balloons()
-            st.success("You are now ready for real-world coding!")
+            if "🛒 Spaza Tycoon" in st.session_state.badges:
+                st.info("Spaza Tycoon badge is already saved on your profile.")
+            else:
+                st.session_state.points += 500
+                st.session_state.badges.append("🛒 Spaza Tycoon")
+                persist_progress()
+                st.success("🎉 *Congratulations!* You built a full Spaza Shop System!")
+                st.balloons()
+                st.success("You are now ready for real-world coding!")
         except Exception as e:
             st.error(f"Fix this: {e}")
 
@@ -204,7 +268,7 @@ if getattr(st.session_state, 'show_certificate', False) or len(st.session_state.
     st.markdown("# 🎓 Certificate of Completion")
     st.markdown("### RemoteTech Python Mastery Program")
     st.markdown(f"*This certifies that*")
-    st.markdown("*Akhona M.*")
+    st.markdown(st.session_state.user_name)
     st.markdown("*has successfully completed the Sterkspruit Python Coding Adventure*")
     st.markdown(f"*Date:* {datetime.now().strftime('%d %B %Y')}")
     st.markdown(f"*Total Points:* {st.session_state.points} 🔥")
@@ -250,14 +314,18 @@ elif page == "📊 Village Impact":
     fig = px.pie(impact_df, names="Category", values="Impact Score", title="Coding Impact Distribution")
     st.plotly_chart(fig)
 
-elif page == "Sign Out":
-    st.session_state.authenticated = False
-    st.session_state.user_name = ""
-    st.session_state.points = 0
-    st.session_state.badges = []
-    st.session_state.completed_lessons = set()
-    st.session_state.show_certificate = False
-    st.success("You have signed out. See you next time! 👋")
+st.sidebar.title("🚀 RemoteTech")
+
+if st.sidebar.button("🚪 Logout", use_container_width=True):
+
+    # Save progress first
+    persist_progress()
+
+    # Clear all session data
+    st.session_state.clear()
+
+    st.success("You have been logged out.")
+
     st.switch_page("login.py")
     st.stop()
 
