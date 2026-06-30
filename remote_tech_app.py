@@ -10,6 +10,47 @@ import plotly.express as px
 from datetime import datetime
 from remotetech_data import init_db, save_user_progress
 
+import io
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.colors import HexColor
+
+def generate_certificate_pdf(user_name, points, date_str):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=landscape(A4))
+    width, height = landscape(A4)
+
+    c.setFillColor(HexColor("#1e3a8a"))
+    c.rect(0, 0, width, height, fill=1)
+
+    c.setStrokeColor(HexColor("#22d3ee"))
+    c.setLineWidth(4)
+    c.rect(30, 30, width - 60, height - 60)
+
+    c.setFillColor(HexColor("#e0f2fe"))
+    c.setFont("Helvetica-Bold", 32)
+    c.drawCentredString(width / 2, height - 120, "Certificate of Completion")
+
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(width / 2, height - 170, "RemoteTech Python Mastery Program")
+
+    c.setFont("Helvetica-Oblique", 14)
+    c.drawCentredString(width / 2, height - 220, "This certifies that")
+
+    c.setFont("Helvetica-Bold", 26)
+    c.drawCentredString(width / 2, height - 260, user_name)
+
+    c.setFont("Helvetica-Oblique", 13)
+    c.drawCentredString(width / 2, height - 300, "has successfully completed the Sterkspruit Python Coding Adventure")
+
+    c.setFont("Helvetica", 12)
+    c.drawCentredString(width / 2, height - 340, f"Date: {date_str}    |    Total Points: {points}")
+
+    c.showPage()
+    c.save()
+    buffer.seek(0)
+    return buffer
+
 st.set_page_config(page_title="RemoteTech", page_icon="🚀", layout="wide")
 init_db()
 
@@ -29,6 +70,28 @@ if 'completed_lessons' not in st.session_state:
 if 'show_certificate' not in st.session_state:
     st.session_state.show_certificate = False
 
+def get_leaderboard(limit=10):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+    SELECT u.full_name, p.points, p.badges
+    FROM progress p
+    JOIN users u ON u.user_name = p.user_name
+    ORDER BY p.points DESC
+    LIMIT ?
+    """, (limit,))
+    rows = cur.fetchall()
+    conn.close()
+
+    leaderboard = []
+    for full_name, points, badges_json in rows:
+        badges = st.json.loads(badges_json)
+        leaderboard.append({
+            "Hero": full_name,
+            "Points": points,
+            "Badges": ", ".join(badges) if badges else ""
+        })
+    return leaderboard
 
 def persist_progress():
     db_user_name = st.session_state.get('db_user_name')
@@ -227,8 +290,6 @@ elif page == "📚 Learning Quests":
             else:
                 st.info("*Hint:* Use [p + 3 for p in prices] and [p for p in prices if p > 20]")
     
-    # ... (I kept quests 2-5 similar to previous version with hints added)
-
 # ====================== NEW MINI PROJECT ======================
 elif page == "🛒 Spaza Shop Project":
     st.header("🛒 *Final Boss: Spaza Shop Management System*")
@@ -274,8 +335,18 @@ if getattr(st.session_state, 'show_certificate', False) or len(st.session_state.
     st.markdown(f"*Total Points:* {st.session_state.points} 🔥")
     st.markdown("*Well done, Future Tech Leader!* 🌍")
     st.markdown("</div>", unsafe_allow_html=True)
-    if st.button("Download Certificate (Screenshot this)"):
-        st.success("Certificate ready! Take a screenshot 🎉")
+
+    pdf_buffer = generate_certificate_pdf(
+        st.session_state.user_name,
+        st.session_state.points,
+        datetime.now().strftime('%d %B %Y')
+    )
+    st.download_button(
+        label="📄 Download Certificate (PDF)",
+        data=pdf_buffer,
+        file_name=f"RemoteTech_Certificate_{st.session_state.user_name}.pdf",
+        mime="application/pdf"
+    )
 
 # ====================== Other Pages (Magic Lab, Leaderboard, Impact) ======================
 elif page == "🧪 Magic Code Lab":
@@ -294,14 +365,14 @@ elif page == "🧪 Magic Code Lab":
 # Leaderboard to be presented in a form of a table with points and badges
 elif page == "🏆 Hero Leaderboard":
     st.header("🏆 Hero Leaderboard")
-    leaderboard_data = {
-        "Position": [1, 2, 3, 4],
-        "Hero": ["Akhona M.", "Sipho D.", "Lerato K.", "Thabo N."],
-        "Points": [850, 720, 680, 600],
-        "Badges": ["🔥 First Spell, 🛒 Spaza Boss", "🔥 First Spell", "🛒 Spaza Boss", ""]
-    }
-    leaderboard_df = pd.DataFrame(leaderboard_data)
-    st.table(leaderboard_df)
+    from remotetech_data import get_leaderboard
+    leaderboard_data = get_leaderboard()
+    if leaderboard_data:
+        leaderboard_df = pd.DataFrame(leaderboard_data)
+        leaderboard_df.insert(0, "Position", range(1, len(leaderboard_df) + 1))
+        st.table(leaderboard_df)
+    else:
+        st.info("No heroes have completed any quests yet — be the first! 🚀")
 
 elif page == "📊 Village Impact":
     st.header("📊 Village Impact")
