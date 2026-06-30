@@ -121,14 +121,14 @@ def login_user(user_name, password):
 
 def update_password(username, new_password):
     hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
-    conn = get_connection()
+    conn = _connect()
     cur = conn.cursor()
     cur.execute("UPDATE users SET password=? WHERE user_name=?", (hashed, username))
     conn.commit()
     conn.close()
 
 def verify_email_matches(username, email):
-    conn = get_connection()
+    conn = _connect()
     cur = conn.cursor()
     cur.execute("SELECT email FROM users WHERE user_name=?", (username,))
     row = cur.fetchone()
@@ -136,9 +136,9 @@ def verify_email_matches(username, email):
     return row is not None and row[0].lower() == email.lower()
 
 def update_profile(username, new_full_name, new_avatar=None):
-    conn = get_connection()
+    conn = _connect()
     cur = conn.cursor()
-    cur.execute("UPDATE users SET full_name=? WHERE user_name=?", (new_full_name, username))
+    cur.execute("UPDATE users SET full_name=?, avatar=? WHERE user_name=?", (new_full_name, new_avatar, username))
     conn.commit()
     conn.close()
 
@@ -159,7 +159,7 @@ def save_user_progress(user_name, points, badges, completed_lessons):
     conn.close()
 
 def get_leaderboard(limit=10):
-    conn = get_connection()
+    conn = _connect()
     cur = conn.cursor()
     cur.execute("""
     SELECT u.full_name, p.points, p.badges
