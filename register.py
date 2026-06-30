@@ -14,10 +14,15 @@ with st.form("register_form"):
     email = st.text_input("Email")
     password = st.text_input("Password", type="password")
     confirm_password = st.text_input("Confirm Password", type="password")
+    # Checkbox for terms and conditions
+    agree_terms = st.checkbox("I agree to the Terms and Conditions")
+    
     submit_button = st.form_submit_button("Register")
     
     if submit_button:
-        if password != confirm_password:
+        if not agree_terms:
+            st.error("You must agree to the Terms and Conditions to register.")
+        elif password != confirm_password:
             st.error("Passwords do not match. Please try again.")
         elif user_name == "" or full_name == "" or email == "" or password == "":
             st.error("All fields are required. Please fill in all the details.")

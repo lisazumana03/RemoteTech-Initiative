@@ -1,6 +1,5 @@
 import streamlit as st
-
-from remotetech_data import authenticate_user, init_db
+from remotetech_data import login_user, init_db
 
 st.set_page_config(page_title="Login", page_icon="🔐")
 def go_to_main_app():
@@ -15,7 +14,7 @@ with st.form("login_form"):
     submit_button = st.form_submit_button("Login")
     
     if submit_button:
-        user = authenticate_user(user_name, password)
+        user = login_user(user_name, password)
         # Keep the original demo account working while also supporting registered users.
         if user_name == "akhona" and password == "password123":
             st.session_state.authenticated = True

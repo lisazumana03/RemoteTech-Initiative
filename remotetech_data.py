@@ -93,7 +93,7 @@ def register_user(full_name, user_name, email, password):
     finally:
         conn.close()
 
-def authenticate_user(user_name, password):
+def login_user(user_name, password):
     conn = _connect()
     cursor = conn.cursor()
     cursor.execute(
