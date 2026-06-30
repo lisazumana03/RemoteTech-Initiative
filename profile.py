@@ -30,7 +30,7 @@ st.divider()
 # ====================== EDIT NAME & AVATAR ======================
 st.subheader("Edit Profile")
 
-new_full_name = st.text_input("Full Name", value=st.session_state.full_name)
+new_full_name = st.text_input("Full Name", value=st.session_state.full_name
 new_avatar = st.selectbox(
     "Choose an Avatar",
     AVATAR_OPTIONS,

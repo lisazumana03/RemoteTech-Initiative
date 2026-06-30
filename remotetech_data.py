@@ -78,13 +78,16 @@ def init_db():
 def register_user(full_name, user_name, email, password):
     conn = _connect()
     cursor = conn.cursor()
+
+    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
     try:
         cursor.execute(
             '''
                 INSERT INTO users (full_name, user_name, email, password, avatar)
                 VALUES (?, ?, ?, ?, ?)
             ''',
-            (full_name, user_name, email, password, None),
+            (full_name, user_name, email, hashed_password, None),
         )
         conn.commit()
         return True
@@ -96,21 +99,28 @@ def register_user(full_name, user_name, email, password):
 def login_user(user_name, password):
     conn = _connect()
     cursor = conn.cursor()
+
     cursor.execute(
         '''
-            SELECT full_name, user_name, points, badges, completed_lessons, avatar
+            SELECT full_name, user_name, password, points, badges, completed_lessons, avatar
             FROM users
-            WHERE user_name = ? AND password = ?
+            WHERE user_name = ?
         ''',
-        (user_name, password),
+        (user_name,),
     )
+
     row = cursor.fetchone()
     conn.close()
 
     if not row:
         return None
 
-    full_name, stored_user_name, points, badges, completed_lessons, avatar = row
+    full_name, stored_user_name, hashed_password, points, badges, completed_lessons, avatar = row
+
+    # verify password
+    if not bcrypt.checkpw(password.encode(), hashed_password.encode()):
+        return None
+
     return {
         'full_name': full_name,
         'user_name': stored_user_name,
@@ -121,9 +131,13 @@ def login_user(user_name, password):
 
 def update_password(username, new_password):
     hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("UPDATE users SET password=? WHERE user_name=?", (hashed, username))
+    cur.execute(
+        "UPDATE users SET password=? WHERE user_name=?",
+        (hashed, username)
+    )
     conn.commit()
     conn.close()
 
