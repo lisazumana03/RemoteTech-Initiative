@@ -1,6 +1,8 @@
 import json
 import sqlite3
 
+import bcrypt
+
 DB_PATH = 'remotetech.db'
 
 def _connect():
@@ -51,6 +53,7 @@ def init_db():
             user_name TEXT NOT NULL UNIQUE,
             email TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
+            avatar TEXT DEFAULT NULL,
             points INTEGER NOT NULL DEFAULT 0,
             badges TEXT NOT NULL DEFAULT '[]',
             completed_lessons TEXT NOT NULL DEFAULT '[]'
@@ -72,17 +75,16 @@ def init_db():
     conn.commit()
     conn.close()
 
-
 def register_user(full_name, user_name, email, password):
     conn = _connect()
     cursor = conn.cursor()
     try:
         cursor.execute(
             '''
-                INSERT INTO users (full_name, user_name, email, password)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO users (full_name, user_name, email, password, avatar)
+                VALUES (?, ?, ?, ?, ?)
             ''',
-            (full_name, user_name, email, password),
+            (full_name, user_name, email, password, None),
         )
         conn.commit()
         return True
@@ -96,7 +98,7 @@ def authenticate_user(user_name, password):
     cursor = conn.cursor()
     cursor.execute(
         '''
-            SELECT full_name, user_name, points, badges, completed_lessons
+            SELECT full_name, user_name, points, badges, completed_lessons, avatar
             FROM users
             WHERE user_name = ? AND password = ?
         ''',
@@ -108,7 +110,7 @@ def authenticate_user(user_name, password):
     if not row:
         return None
 
-    full_name, stored_user_name, points, badges, completed_lessons = row
+    full_name, stored_user_name, points, badges, completed_lessons, avatar = row
     return {
         'full_name': full_name,
         'user_name': stored_user_name,
@@ -156,3 +158,25 @@ def save_user_progress(user_name, points, badges, completed_lessons):
     conn.commit()
     conn.close()
 
+def get_leaderboard(limit=10):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+    SELECT u.full_name, p.points, p.badges
+    FROM progress p
+    JOIN users u ON u.user_name = p.user_name
+    ORDER BY p.points DESC
+    LIMIT ?
+    """, (limit,))
+    rows = cur.fetchall()
+    conn.close()
+
+    leaderboard = []
+    for full_name, points, badges_json in rows:
+        badges = json.loads(badges_json)
+        leaderboard.append({
+            "Hero": full_name,
+            "Points": points,
+            "Badges": ", ".join(badges) if badges else ""
+        })
+    return leaderboard

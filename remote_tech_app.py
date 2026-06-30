@@ -70,29 +70,6 @@ if 'completed_lessons' not in st.session_state:
 if 'show_certificate' not in st.session_state:
     st.session_state.show_certificate = False
 
-def get_leaderboard(limit=10):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-    SELECT u.full_name, p.points, p.badges
-    FROM progress p
-    JOIN users u ON u.user_name = p.user_name
-    ORDER BY p.points DESC
-    LIMIT ?
-    """, (limit,))
-    rows = cur.fetchall()
-    conn.close()
-
-    leaderboard = []
-    for full_name, points, badges_json in rows:
-        badges = st.json.loads(badges_json)
-        leaderboard.append({
-            "Hero": full_name,
-            "Points": points,
-            "Badges": ", ".join(badges) if badges else ""
-        })
-    return leaderboard
-
 def persist_progress():
     db_user_name = st.session_state.get('db_user_name')
     if not db_user_name:
