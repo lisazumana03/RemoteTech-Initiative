@@ -8,6 +8,40 @@ DB_PATH = 'remotetech.db'
 def _connect():
     return sqlite3.connect(DB_PATH)
 
+def init_db():
+    conn = _connect()
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            full_name TEXT NOT NULL,
+            user_name TEXT NOT NULL UNIQUE,
+            email TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            avatar TEXT DEFAULT NULL,
+            role TEXT NOT NULL DEFAULT 'student',
+            points INTEGER NOT NULL DEFAULT 0,
+            badges TEXT NOT NULL DEFAULT '[]',
+            completed_lessons TEXT NOT NULL DEFAULT '[]'
+        )
+    ''')
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS progress (
+            user_name TEXT PRIMARY KEY,
+            points INTEGER DEFAULT 0,
+            badges TEXT DEFAULT '[]',
+            completed_lessons TEXT DEFAULT '[]',
+            quiz_attempts INTEGER DEFAULT 0,
+            total_time INTEGER DEFAULT 0,
+            last_active TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    _ensure_progress_columns(cursor)
+    conn.commit()
+    conn.close()
+
 def _parse_json_list(value):
     if not value:
         return []
@@ -42,39 +76,6 @@ def _ensure_progress_columns(cursor):
         '''
     )
 
-
-def init_db():
-    conn = _connect()
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            full_name TEXT NOT NULL,
-            user_name TEXT NOT NULL UNIQUE,
-            email TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL,
-            avatar TEXT DEFAULT NULL,
-            points INTEGER NOT NULL DEFAULT 0,
-            badges TEXT NOT NULL DEFAULT '[]',
-            completed_lessons TEXT NOT NULL DEFAULT '[]'
-        )
-    ''')
-
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS progress (
-        user_name TEXT PRIMARY KEY,
-        points INTEGER DEFAULT 0,
-        badges TEXT DEFAULT '[]',
-        completed_lessons TEXT DEFAULT '[]',
-        quiz_attempts INTEGER DEFAULT 0,
-        total_time INTEGER DEFAULT 0
-    )
-    """)
-
-    _ensure_progress_columns(cursor)
-    conn.commit()
-    conn.close()
-
 def register_user(full_name, user_name, email, password):
     conn = _connect()
     cursor = conn.cursor()
@@ -84,10 +85,10 @@ def register_user(full_name, user_name, email, password):
     try:
         cursor.execute(
             '''
-                INSERT INTO users (full_name, user_name, email, password, avatar)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO users (full_name, user_name, email, password, avatar, role)
+                VALUES (?, ?, ?, ?, ?, ?)
             ''',
-            (full_name, user_name, email, hashed_password, None),
+            (full_name, user_name, email, hashed_password, None, 'student'),
         )
         conn.commit()
         return True
@@ -100,14 +101,18 @@ def login_user(user_name, password):
     conn = _connect()
     cursor = conn.cursor()
 
-    cursor.execute(
-        '''
-            SELECT full_name, user_name, password, points, badges, completed_lessons, avatar
-            FROM users
-            WHERE user_name = ?
-        ''',
-        (user_name,),
-    )
+    cursor.execute("""
+    SELECT full_name,
+           user_name,
+           password,
+           role,
+           points,
+           badges,
+           completed_lessons,
+           avatar
+    FROM users
+    WHERE user_name = ?
+""", (user_name,))
 
     row = cursor.fetchone()
     conn.close()
@@ -115,7 +120,7 @@ def login_user(user_name, password):
     if not row:
         return None
 
-    full_name, stored_user_name, hashed_password, points, badges, completed_lessons, avatar = row
+    full_name, stored_user_name, hashed_password, role, points, badges, completed_lessons, avatar = row
 
     # verify password
     if not bcrypt.checkpw(password.encode(), hashed_password.encode()):
@@ -124,6 +129,7 @@ def login_user(user_name, password):
     return {
         'full_name': full_name,
         'user_name': stored_user_name,
+        'role': role,
         'points': points or 0,
         'badges': _parse_json_list(badges),
         'completed_lessons': set(_parse_json_list(completed_lessons)),
@@ -169,8 +175,47 @@ def save_user_progress(user_name, points, badges, completed_lessons):
         ''',
         (points, json.dumps(badges), json.dumps(sorted(completed_lessons)), user_name),
     )
+
+    cursor.execute("""
+        INSERT INTO progress (user_name, points, badges, completed_lessons, last_active)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_name) DO UPDATE SET
+            points=excluded.points,
+            badges=excluded.badges,
+            completed_lessons=excluded.completed_lessons,
+            last_active=CURRENT_TIMESTAMP
+        """, (user_name, points, json.dumps(badges), json.dumps(list(completed_lessons))))
+
     conn.commit()
     conn.close()
+
+def load_user_progress(user_name):
+    conn = _connect()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''
+            SELECT points, badges, completed_lessons
+            FROM users
+            WHERE user_name = ?
+        ''',
+        (user_name,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        points, badges_json, completed_lessons_json = row
+        return {
+            'points': points or 0,
+            'badges': _parse_json_list(badges_json),
+            'completed_lessons': set(_parse_json_list(completed_lessons_json)),
+        }
+    else:
+        return {
+            'points': 0,
+            'badges': [],
+            'completed_lessons': set(),
+        }
 
 def get_leaderboard(limit=10):
     conn = _connect()
@@ -194,3 +239,63 @@ def get_leaderboard(limit=10):
             "Badges": ", ".join(badges) if badges else ""
         })
     return leaderboard
+
+def get_all_student_progress():
+    """Full progress overview for all students."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+    SELECT u.full_name, u.user_name, p.points, p.badges, p.completed_lessons
+    FROM progress p
+    JOIN users u ON u.user_name = p.user_name
+    ORDER BY p.points DESC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    students = []
+    for full_name, user_name, points, badges_json, lessons_json in rows:
+        badges = json.loads(badges_json)
+        lessons = json.loads(lessons_json)
+        students.append({
+            "full_name": full_name,
+            "user_name": user_name,
+            "points": points,
+            "badges": badges,
+            "completed_lessons": lessons,
+            "lessons_count": len(lessons),
+        })
+    return students
+
+
+def get_inactive_students(days=7):
+    """Students who haven't logged any progress in X days."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+    SELECT u.full_name, u.user_name, p.points, p.last_active
+    FROM progress p
+    JOIN users u ON u.user_name = p.user_name
+    WHERE p.last_active < datetime('now', ?)
+    OR p.last_active IS NULL
+    ORDER BY p.last_active ASC
+    """, (f'-{days} days',))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
+def get_quest_completion_stats():
+    """How many students completed each quest."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT completed_lessons FROM progress")
+    rows = cur.fetchall()
+    conn.close()
+
+    quest_counts = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0}
+    for (lessons_json,) in rows:
+        for lesson in json.loads(lessons_json):
+            if lesson in quest_counts:
+                quest_counts[lesson] += 1
+    return quest_counts

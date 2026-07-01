@@ -1,5 +1,5 @@
 import streamlit as st
-from remotetech_data import login_user, init_db
+from remotetech_data import login_user, init_db, load_user_progress
 
 st.set_page_config(page_title="Login", page_icon="🔐")
 
@@ -25,6 +25,7 @@ with st.form("login_form"):
             st.session_state.authenticated = True
             st.session_state.user_name = full_name or stored_user_name
             st.session_state.db_user_name = stored_user_name
+            st.session_state.role = user["role"]
             st.session_state.points = user["points"]
             st.session_state.badges = user["badges"]
             st.session_state.completed_lessons = user["completed_lessons"]
