@@ -15,7 +15,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             full_name TEXT NOT NULL,
-            user_name TEXT NOT NULL UNIQUE,
+            username TEXT NOT NULL UNIQUE,
             email TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
             avatar TEXT DEFAULT NULL,
@@ -28,7 +28,7 @@ def init_db():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS progress (
-            user_name TEXT PRIMARY KEY,
+            username TEXT PRIMARY KEY,
             points INTEGER DEFAULT 0,
             badges TEXT DEFAULT '[]',
             completed_lessons TEXT DEFAULT '[]',
@@ -40,11 +40,11 @@ def init_db():
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS quest_times (
-            user_name TEXT,
+            username TEXT,
             quest_id TEXT,
             seconds_spent INTEGER,
             completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (user_name, quest_id)
+            PRIMARY KEY (username, quest_id)
         )
     """)
 
@@ -85,7 +85,7 @@ def _ensure_progress_columns(cursor):
         '''
     )
 
-def register_user(full_name, user_name, email, password):
+def register_user(full_name, username, email, password):
     conn = _connect()
     cursor = conn.cursor()
 
@@ -94,10 +94,10 @@ def register_user(full_name, user_name, email, password):
     try:
         cursor.execute(
             '''
-                INSERT INTO users (full_name, user_name, email, password, avatar, role)
+                INSERT INTO users (full_name, username, email, password, avatar, role)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''',
-            (full_name, user_name, email, hashed_password, None, 'student'),
+            (full_name, username, email, hashed_password, None, 'student'),
         )
         conn.commit()
         return True
@@ -106,14 +106,14 @@ def register_user(full_name, user_name, email, password):
     finally:
         conn.close()
 
-def login_user(user_name, password):
+def login_user(username, password):
     conn = _connect()
     cursor = conn.cursor()
 
     cursor.execute("""
     SELECT id,
            full_name,
-           user_name,
+           username,
            password,
            role,
            points,
@@ -121,8 +121,8 @@ def login_user(user_name, password):
            completed_lessons,
            avatar
     FROM users
-    WHERE user_name = ?
-""", (user_name,))
+    WHERE username = ?
+""", (username,))
 
     row = cursor.fetchone()
     conn.close()
@@ -130,7 +130,7 @@ def login_user(user_name, password):
     if not row:
         return None
 
-    user_id, full_name, stored_user_name, hashed_password, role, points, badges, completed_lessons, avatar = row
+    user_id, full_name, stored_username, hashed_password, role, points, badges, completed_lessons, avatar = row
 
     # verify password
     if not bcrypt.checkpw(password.encode(), hashed_password.encode()):
@@ -139,7 +139,7 @@ def login_user(user_name, password):
     return {
         'user_id': user_id,
         'full_name': full_name,
-        'user_name': stored_user_name,
+        'username': stored_username,
         'role': role,
         'points': points or 0,
         'badges': _parse_json_list(badges),
@@ -152,7 +152,7 @@ def update_password(username, new_password):
     conn = _connect()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE users SET password=? WHERE user_name=?",
+        "UPDATE users SET password=? WHERE username=?",
         (hashed, username)
     )
     conn.commit()

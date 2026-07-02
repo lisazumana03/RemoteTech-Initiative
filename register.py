@@ -7,11 +7,11 @@ AVATAR_OPTIONS = ["🚀", "🦸", "🧑‍💻", "🌟", "🔥", "🛒", "🧪",
 
 st.title("🚀 RemoteTech — Create an Account")
 
-full_name = st.text_input("Full Name")
-username = st.text_input("Username")
-email = st.text_input("Email")
-password = st.text_input("Password", type="password")
-confirm_password = st.text_input("Confirm Password", type="password")
+full_name           = st.text_input("Full Name")
+username            = st.text_input("Username")
+email               = st.text_input("Email")
+password            = st.text_input("Password", type="password")
+confirm_password    = st.text_input("Confirm Password", type="password")
 
 st.markdown("#### Choose an Avatar *(optional)*")
 avatar = st.selectbox(
