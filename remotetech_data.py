@@ -11,6 +11,7 @@ def _connect():
 def init_db():
     conn = _connect()
     cursor = conn.cursor()
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,7 +39,16 @@ def init_db():
         )
     """)
 
-    _ensure_progress_columns(cursor)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS quest_times (
+            user_name TEXT,
+            quest_id TEXT,
+            seconds_spent INTEGER,
+            completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_name, quest_id)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
