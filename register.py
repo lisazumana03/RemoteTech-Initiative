@@ -1,5 +1,3 @@
-#File will update to add role-based access
-
 import streamlit as st
 from remotetech_data import init_db, register_user
 
@@ -60,11 +58,30 @@ if st.button("Register", type="primary"):
         st.error("Passwords do not match.")
     elif len(password) < 8:
         st.error("Password must be at least 8 characters.")
+    elif not popia_consent:
+        st.error("You must consent to the Privacy Notice to register.")
     elif not terms_accepted:
         st.error("Please agree to the Terms and Conditions.")
     else:
-        success = register_user(full_name, username, email, password)
+        success = register_user(
+            full_name=full_name, 
+            username=username, 
+            email=email, 
+            password=password, 
+            avatar=avatar, 
+            role="student", 
+            popia_consent=True
+        )
         if success:
-            st.success("Registration successful! You can now login.")
+            # Pre-load session so full name is available immediately on login
+            st.session_state.registered_username = username
+            st.session_state.registered_full_name = full_name
+            st.success(f"🎉 Welcome, {full_name}! Your account has been created.")
+            st.info("You can now login below.")
         else:
-            st.error("Username or email already exists.")
+            st.error("That username or email is already registered.")
+
+st.divider()
+st.markdown("Already registered?")
+if st.button("👉 Go to Login"):
+    st.switch_page("login.py")
