@@ -1,5 +1,4 @@
 import streamlit as st
-
 from remotetech_data import init_db, register_user
 
 st.set_page_config(page_title="Register", page_icon="📝")
@@ -26,6 +25,8 @@ with st.form("register_form"):
             st.error("Passwords do not match. Please try again.")
         elif username == "" or full_name == "" or email == "" or password == "":
             st.error("All fields are required. Please fill in all the details.")
+        elif len(password) < 8:
+            st.error("Password must be at least 8 characters long.")
         else:
             # Attempt to register the user
             if register_user(full_name, username, email, password):
