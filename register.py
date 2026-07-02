@@ -1,7 +1,11 @@
+#File will update to add role-based access
+
 import streamlit as st
 from remotetech_data import init_db, register_user
 
 init_db()
+
+AVATAR_OPTIONS = ["🚀", "🦸", "🧑‍💻", "🌟", "🔥", "🛒", "🧪", "🏅"]
 
 st.title("🚀 RemoteTech — Create an Account")
 
@@ -10,6 +14,43 @@ username = st.text_input("Username")
 email = st.text_input("Email")
 password = st.text_input("Password", type="password")
 confirm_password = st.text_input("Confirm Password", type="password")
+
+st.markdown("#### Choose an Avatar *(optional)*")
+avatar = st.selectbox(
+    "Avatar",
+    AVATAR_OPTIONS,
+    index=0,
+    label_visibility="collapsed",
+)
+
+st.divider()
+
+#===================== POPIA NOTICE ======================
+with st.expander("📄 Privacy Notice (POPIA) — please read before registering"):
+    st.markdown("""
+**RemoteTech collects the following personal information:**
+
+- Full Name - for identification purposes
+- Username - account login and display
+- Email - for account management and communication
+- Learning progress (points, badges, completed quests) - to track your journey
+                
+**How we use your data:**
+- Your progress is shown to you and to your teacher/admin so they can support you.
+- Your first name may appear on the class leaderboard.
+- We do not sell, share, or use your data for advertising.
+                
+**Your rights under POPIA (Protection of Personal Information Act, 2013):**
+- You may request to view all data we hold about you at any time.
+- You may request deletion of your account and all associated data from your Profile page.
+- You may contact the system administrator to raise a data concern.
+
+By registering, you consent to the collection and use of this information in accordance with our Privacy Policy.
+""")
+    
+popia_consent = st.checkbox(
+    "✅ I have read the Privacy Notice and consent to my personal information being processed as described."
+)
 terms_accepted = st.checkbox("I agree to the Terms and Conditions")
 
 if st.button("Register", type="primary"):
