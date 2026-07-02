@@ -227,6 +227,19 @@ def load_user_progress(user_name):
             'completed_lessons': set(),
         }
 
+def save_quest_time(user_name, quest_id, seconds_spent):
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("""
+    INSERT INTO quest_times (user_name, quest_id, seconds_spent)
+    VALUES (?, ?, ?)
+    ON CONFLICT(user_name, quest_id) DO UPDATE SET
+        seconds_spent=excluded.seconds_spent,
+        completed_at=CURRENT_TIMESTAMP
+    """, (user_name, quest_id, seconds_spent))
+    conn.commit()
+    conn.close()
+
 def get_leaderboard(limit=10):
     conn = _connect()
     cur = conn.cursor()
