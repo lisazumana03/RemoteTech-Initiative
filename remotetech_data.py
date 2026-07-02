@@ -61,30 +61,6 @@ def _parse_json_list(value):
     except json.JSONDecodeError:
         return []
 
-
-def _ensure_progress_columns(cursor):
-    cursor.execute('PRAGMA table_info(users)')
-    existing_columns = {row[1] for row in cursor.fetchall()}
-
-    required_columns = {
-        'points': 'INTEGER NOT NULL DEFAULT 0',
-        'badges': "TEXT NOT NULL DEFAULT '[]'",
-        'completed_lessons': "TEXT NOT NULL DEFAULT '[]'",
-    }
-
-    for column_name, definition in required_columns.items():
-        if column_name not in existing_columns:
-            cursor.execute(f'ALTER TABLE users ADD COLUMN {column_name} {definition}')
-
-    cursor.execute(
-        '''
-            UPDATE users
-            SET points = COALESCE(points, 0),
-                badges = COALESCE(badges, '[]'),
-                completed_lessons = COALESCE(completed_lessons, '[]')
-        '''
-    )
-
 def register_user(full_name, username, email, password, avatar, role="student", popia_consent=False):
     conn = _connect()
     cursor = conn.cursor()
