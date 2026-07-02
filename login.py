@@ -9,8 +9,8 @@ if "authenticated" not in st.session_state:
 if "user_id" not in st.session_state:
     st.session_state.user_id = None
 
-if "user_name" not in st.session_state:
-    st.session_state.user_name = ""
+if "username" not in st.session_state:
+    st.session_state.username = ""
 
 if "full_name" not in st.session_state:
     st.session_state.full_name = ""
@@ -30,13 +30,13 @@ if st.button("Login", type="primary"):
         st.session_state.authenticated = True
         st.session_state.user_id = user["user_id"]
         st.session_state.full_name = user["full_name"]
-        st.session_state.user_name = user["user_name"]
+        st.session_state.username = user["username"]
         st.session_state.role = user["role"]
         st.session_state.points = user["points"]
         st.session_state.badges = user["badges"]
         st.session_state.completed_lessons = user["completed_lessons"]
 
-        progress = load_user_progress(user["user_name"])
+        progress = load_user_progress(user["username"])
 
         if progress:
             st.session_state.points = progress["points"]
@@ -54,4 +54,6 @@ if st.button("Login", type="primary"):
         st.error("Invalid username or password.")
 
 st.markdown("---")
-st.caption("Don't have an account? Use the Register page from the menu.")
+st.caption("Don't have an account? Register below.")
+if st.button("👉 Go to Register"):
+    st.switch_page("register.py")

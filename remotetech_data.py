@@ -18,7 +18,7 @@ def init_db():
             username TEXT NOT NULL UNIQUE,
             email TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
-            avatar TEXT DEFAULT NULL,
+            avatar TEXT DEFAULT '🚀',
             role TEXT NOT NULL DEFAULT 'student',
             points INTEGER NOT NULL DEFAULT 0,
             badges TEXT NOT NULL DEFAULT '[]',
@@ -85,7 +85,7 @@ def _ensure_progress_columns(cursor):
         '''
     )
 
-def register_user(full_name, username, email, password):
+def register_user(full_name, username, email, password, avatar, role="student", popia_consent=False):
     conn = _connect()
     cursor = conn.cursor()
 
@@ -97,7 +97,7 @@ def register_user(full_name, username, email, password):
                 INSERT INTO users (full_name, username, email, password, avatar, role)
                 VALUES (?, ?, ?, ?, ?, ?)
             ''',
-            (full_name, username, email, hashed_password, None, 'student'),
+            (full_name, username, email, hashed_password, avatar, role),
         )
         conn.commit()
         return True
@@ -161,7 +161,7 @@ def update_password(username, new_password):
 def verify_email_matches(username, email):
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("SELECT email FROM users WHERE user_name=?", (username,))
+    cur.execute("SELECT email FROM users WHERE username=?", (username,))
     row = cur.fetchone()
     conn.close()
     return row is not None and row[0].lower() == email.lower()
@@ -169,11 +169,11 @@ def verify_email_matches(username, email):
 def update_profile(username, new_full_name, new_avatar=None):
     conn = _connect()
     cur = conn.cursor()
-    cur.execute("UPDATE users SET full_name=?, avatar=? WHERE user_name=?", (new_full_name, new_avatar, username))
+    cur.execute("UPDATE users SET full_name=?, avatar=? WHERE username=?", (new_full_name, new_avatar, username))
     conn.commit()
     conn.close()
 
-def save_user_progress(user_name, points, badges, completed_lessons):
+def save_user_progress(username, points, badges, completed_lessons):
     conn = _connect()
     cursor = conn.cursor()
     cursor.execute(
@@ -182,34 +182,34 @@ def save_user_progress(user_name, points, badges, completed_lessons):
             SET points = ?,
                 badges = ?,
                 completed_lessons = ?
-            WHERE user_name = ?
+            WHERE username = ?
         ''',
-        (points, json.dumps(badges), json.dumps(sorted(completed_lessons)), user_name),
+        (points, json.dumps(badges), json.dumps(sorted(completed_lessons)), username),
     )
 
     cursor.execute("""
-        INSERT INTO progress (user_name, points, badges, completed_lessons, last_active)
+        INSERT INTO progress (username, points, badges, completed_lessons, last_active)
         VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(user_name) DO UPDATE SET
+        ON CONFLICT(username) DO UPDATE SET
             points=excluded.points,
             badges=excluded.badges,
             completed_lessons=excluded.completed_lessons,
             last_active=CURRENT_TIMESTAMP
-        """, (user_name, points, json.dumps(badges), json.dumps(list(completed_lessons))))
+        """, (username, points, json.dumps(badges), json.dumps(list(completed_lessons))))
 
     conn.commit()
     conn.close()
 
-def load_user_progress(user_name):
+def load_user_progress(username):
     conn = _connect()
     cursor = conn.cursor()
     cursor.execute(
         '''
             SELECT points, badges, completed_lessons
             FROM users
-            WHERE user_name = ?
+            WHERE username = ?
         ''',
-        (user_name,),
+        (username,),
     )
     row = cursor.fetchone()
     conn.close()
@@ -228,16 +228,16 @@ def load_user_progress(user_name):
             'completed_lessons': set(),
         }
 
-def save_quest_time(user_name, quest_id, seconds_spent):
+def save_quest_time(username, quest_id, seconds_spent):
     conn = _connect()
     cur = conn.cursor()
     cur.execute("""
-    INSERT INTO quest_times (user_name, quest_id, seconds_spent)
+    INSERT INTO quest_times (username, quest_id, seconds_spent)
     VALUES (?, ?, ?)
-    ON CONFLICT(user_name, quest_id) DO UPDATE SET
+    ON CONFLICT(username, quest_id) DO UPDATE SET
         seconds_spent=excluded.seconds_spent,
         completed_at=CURRENT_TIMESTAMP
-    """, (user_name, quest_id, seconds_spent))
+    """, (username, quest_id, seconds_spent))
     conn.commit()
     conn.close()
 
@@ -247,7 +247,7 @@ def get_leaderboard(limit=10):
     cur.execute("""
     SELECT u.full_name, p.points, p.badges
     FROM progress p
-    JOIN users u ON u.user_name = p.user_name
+    JOIN users u ON u.username = p.username
     ORDER BY p.points DESC
     LIMIT ?
     """, (limit,))
@@ -269,9 +269,9 @@ def get_all_student_progress():
     conn = _connect()
     cur = conn.cursor()
     cur.execute("""
-    SELECT u.full_name, u.user_name, p.points, p.badges, p.completed_lessons
+    SELECT u.full_name, u.username, p.points, p.badges, p.completed_lessons
     FROM progress p
-    JOIN users u ON u.user_name = p.user_name
+    JOIN users u ON u.username = p.username
     ORDER BY p.points DESC
     """)
     rows = cur.fetchall()
@@ -297,9 +297,9 @@ def get_inactive_students(days=7):
     conn = _connect()
     cur = conn.cursor()
     cur.execute("""
-    SELECT u.full_name, u.user_name, p.points, p.last_active
+    SELECT u.full_name, u.username, p.points, p.last_active
     FROM progress p
-    JOIN users u ON u.user_name = p.user_name
+    JOIN users u ON u.username = p.username
     WHERE p.last_active < datetime('now', ?)
     OR p.last_active IS NULL
     ORDER BY p.last_active ASC
@@ -323,3 +323,13 @@ def get_quest_completion_stats():
             if lesson in quest_counts:
                 quest_counts[lesson] += 1
     return quest_counts
+
+def delete_user_data(username):
+    """Delete a user and all their associated data."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM users WHERE username=?", (username,))
+    cur.execute("DELETE FROM progress WHERE username=?", (username,))
+    cur.execute("DELETE FROM quest_times WHERE username=?", (username,))
+    conn.commit()
+    conn.close()

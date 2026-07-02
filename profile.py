@@ -1,5 +1,5 @@
 import streamlit as st
-from remotetech_data import init_db, update_profile, update_password, login_user
+from remotetech_data import init_db, update_profile, update_password, login_user, delete_user_data
 
 init_db()
 
@@ -15,7 +15,7 @@ if "avatar" not in st.session_state:
 
 st.title("👤 My Profile")
 st.markdown(f"## {st.session_state.avatar} {st.session_state.full_name}")
-st.caption(f"Username: {st.session_state.user_name}")
+st.caption(f"Username: {st.session_state.username}")
 
 st.divider()
 
@@ -76,6 +76,30 @@ with col2:
     st.metric("🏅 Badges", len(st.session_state.get("badges", [])))
 with col3:
     st.metric("📚 Quests Completed", len(st.session_state.get("completed_lessons", set())))
+
+st.divider()
+
+#====POPIA Right to ensure=======
+st.subheader("🔒 Your Data Rights (POPIA)")
+st.markdown("""Under the **Protection of Personal Information Act (POPIA)**, you have the right to request
+deletion of all personal data we hold about you. This will permanently erase your account,
+progress, badges, and points. **This action cannot be undone.**
+""")
+
+with st.expander("⚠️ Delete my account and all my data"):
+    st.warning("This will permanently delete your account and all learning progress.")
+    confirm_delete = st.text_input(
+        f'Type your username **{st.session_state.username}** to confirm:',
+        key="delete_confirm"
+    )
+    if st.button("🗑️ Permanently Delete My Account", type="primary"):
+        if confirm_delete != st.session_state.username:
+            st.error("Username does not match. Deletion cancelled.")
+        else:
+            delete_user_data(st.session_state.username)
+            st.session_state.clear()
+            st.success("Your account and all data have been deleted.")
+            st.switch_page("login.py")
 
 st.divider()
 
