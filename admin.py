@@ -1,13 +1,4 @@
 import streamlit as st
-
-if "role" not in st.session_state:
-    st.error("Please log in.")
-    st.stop()
-
-if st.session_state.role not in ["admin", "teacher", "lecturer"]:
-    st.error("Access denied.")
-    st.stop()
-
 import pandas as pd
 import plotly.express as px
 from remotetech_data import (
@@ -19,7 +10,6 @@ from remotetech_data import (
 
 init_db()
 
-# Guard: must be logged in as admin
 if not st.session_state.get("authenticated", False):
     st.warning("Please login first.")
     st.switch_page("login.py")
@@ -33,38 +23,43 @@ st.set_page_config(page_title="Admin Dashboard", page_icon="🛡️", layout="wi
 st.title("🛡️ Teacher / Admin Dashboard")
 st.caption("RemoteTech Sterkspruit Pilot — Class Overview")
 
-students = get_all_student_progress()
+students    = get_all_student_progress()
 quest_stats = get_quest_completion_stats()
-inactive = get_inactive_students(days=7)
+inactive    = get_inactive_students(days=7)
 
 # ====================== TOP METRICS ======================
-total_students = len(students)
-completed_all = sum(1 for s in students if s["lessons_count"] >= 6)
-avg_points = round(sum(s["points"] for s in students) / total_students, 1) if total_students else 0
-inactive_count = len(inactive)
+total_students  = len(students)
+completed_all   = sum(1 for s in students if s["lessons_count"] >= 6)
+avg_points      = round(sum(s["points"] for s in students) / total_students, 1) if total_students else 0
+inactive_count  = len(inactive)
 
 col1, col2, col3, col4 = st.columns(4)
-col1.metric("👩‍🎓 Total Students", total_students)
-col2.metric("🎓 Completed All Quests", completed_all)
-col3.metric("⭐ Avg Points", avg_points)
-col4.metric("😴 Inactive (7+ days)", inactive_count, delta=f"-{inactive_count}" if inactive_count else None, delta_color="inverse")
+col1.metric("👩‍🎓 Total Students",       total_students)
+col2.metric("🎓 Completed All Quests",   completed_all)
+col3.metric("⭐ Avg Points",             avg_points)
+col4.metric("😴 Inactive (7+ days)",     inactive_count,
+            delta=f"-{inactive_count}" if inactive_count else None,
+            delta_color="inverse")
 
 st.divider()
 
 # ====================== STUDENT PROGRESS TABLE ======================
 st.subheader("📋 All Students")
 
-search = st.text_input("🔍 Search by name", "")
+search = st.text_input("🔍 Search by name or username", "")
 rows = []
 for s in students:
     if search.lower() in s["full_name"].lower() or search.lower() in s["user_name"].lower():
         rows.append({
-            "Name": s["full_name"],
-            "Username": s["user_name"],
-            "Points": s["points"],
-            "Quests Done": f"{s['lessons_count']} / 6",
-            "Badges": ", ".join(s["badges"]) if s["badges"] else "None",
-            "Status": "✅ Complete" if s["lessons_count"] >= 6 else ("⚠️ In Progress" if s["lessons_count"] > 0 else "🔴 Not Started"),
+            "Name":         s["full_name"],
+            "Username":     s["user_name"],
+            "Points":       s["points"],
+            "Quests Done":  f"{s['lessons_count']} / 6",
+            "Badges":       ", ".join(s["badges"]) if s["badges"] else "None",
+            "Last Active":  s["last_active"] or "Never",
+            "Status":       "✅ Complete"   if s["lessons_count"] >= 6
+                            else ("⚠️ In Progress" if s["lessons_count"] > 0
+                            else "🔴 Not Started"),
         })
 
 if rows:
@@ -80,7 +75,7 @@ st.divider()
 # ====================== QUEST COMPLETION CHART ======================
 st.subheader("📊 Quest Completion Rates")
 
-quest_labels = {
+QUEST_LABELS = {
     "1": "Quest 1: Variables",
     "2": "Quest 2: Taxi Fare",
     "3": "Quest 3: Decisions",
@@ -90,7 +85,7 @@ quest_labels = {
 }
 
 quest_df = pd.DataFrame([
-    {"Quest": quest_labels[k], "Students Completed": v}
+    {"Quest": QUEST_LABELS[k], "Students Completed": v}
     for k, v in quest_stats.items()
 ])
 
