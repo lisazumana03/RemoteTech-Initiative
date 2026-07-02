@@ -1,6 +1,5 @@
 import json
 import sqlite3
-
 import bcrypt
 
 DB_PATH = 'remotetech.db'
@@ -112,7 +111,8 @@ def login_user(user_name, password):
     cursor = conn.cursor()
 
     cursor.execute("""
-    SELECT full_name,
+    SELECT id,
+           full_name,
            user_name,
            password,
            role,
@@ -130,13 +130,14 @@ def login_user(user_name, password):
     if not row:
         return None
 
-    full_name, stored_user_name, hashed_password, role, points, badges, completed_lessons, avatar = row
+    user_id, full_name, stored_user_name, hashed_password, role, points, badges, completed_lessons, avatar = row
 
     # verify password
     if not bcrypt.checkpw(password.encode(), hashed_password.encode()):
         return None
 
     return {
+        'user_id': user_id,
         'full_name': full_name,
         'user_name': stored_user_name,
         'role': role,
