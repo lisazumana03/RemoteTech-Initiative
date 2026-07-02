@@ -252,7 +252,7 @@ def get_leaderboard(limit=10):
 
 def get_all_student_progress():
     """Full progress overview for all students."""
-    conn = get_connection()
+    conn = _connect()
     cur = conn.cursor()
     cur.execute("""
     SELECT u.full_name, u.user_name, p.points, p.badges, p.completed_lessons
@@ -280,7 +280,7 @@ def get_all_student_progress():
 
 def get_inactive_students(days=7):
     """Students who haven't logged any progress in X days."""
-    conn = get_connection()
+    conn = _connect()
     cur = conn.cursor()
     cur.execute("""
     SELECT u.full_name, u.user_name, p.points, p.last_active
@@ -297,7 +297,7 @@ def get_inactive_students(days=7):
 
 def get_quest_completion_stats():
     """How many students completed each quest."""
-    conn = get_connection()
+    conn = _connect()
     cur = conn.cursor()
     cur.execute("SELECT completed_lessons FROM progress")
     rows = cur.fetchall()
