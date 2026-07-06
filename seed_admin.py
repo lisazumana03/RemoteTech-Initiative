@@ -3,8 +3,8 @@ seed_admin.py — One-off local script to create an admin account.
 
 This is NOT part of the Streamlit app and is never imported by it.
 Run it directly from your terminal, once, to create a teacher/admin login.
-It talks to the same database the app uses — local SQLite by default, or
-the hosted Postgres instance if a DATABASE_URL env var is set (see db.py).
+It talks to the same remotetech.db file the app uses, so run it from the
+same folder as your other .py files (or adjust DB_PATH in remotetech_data.py).
 
 Usage:
     python seed_admin.py
