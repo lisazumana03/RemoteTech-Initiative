@@ -170,7 +170,7 @@ st.sidebar.divider()
 if st.sidebar.button("👤 My Profile", use_container_width=True):
     st.switch_page("profile.py")
 
-if st.session_state.get("user_name") == "admin":
+if st.session_state.get("role") == "admin":
     if st.sidebar.button("🛡️ Admin Dashboard", use_container_width=True):
         st.switch_page("admin.py")
 

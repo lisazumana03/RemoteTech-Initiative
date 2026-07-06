@@ -68,8 +68,7 @@ if st.button("Register", type="primary"):
             username=username, 
             email=email, 
             password=password, 
-            avatar=avatar, 
-            role="student", 
+            avatar=avatar,  
             popia_consent=True
         )
         if success:
