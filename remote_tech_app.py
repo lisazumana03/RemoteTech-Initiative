@@ -7,7 +7,6 @@ if not st.session_state.get("authenticated", False):
 
 import io
 import sys
-import contextlib
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
@@ -21,6 +20,7 @@ from remotetech_data import (
     save_quest_time,
     get_leaderboard,
 )
+from sandbox import safe_exec
 
 # ====================== PAGE CONFIG ======================
 st.set_page_config(page_title="RemoteTech", page_icon="🚀", layout="wide")
@@ -69,24 +69,6 @@ def persist_progress():
         st.session_state.badges,
         st.session_state.completed_lessons,
     )
-
-
-BLOCKED = ["import os", "import sys", "import subprocess", "open(", "__import__"]
-
-def safe_exec(code):
-    """Run student code safely. Returns (stdout, local_vars, error)."""
-    for term in BLOCKED:
-        if term in code:
-            return "", {}, f"'{term}' is not allowed in this exercise."
-    stdout_capture = io.StringIO()
-    local_vars = {}
-    try:
-        with contextlib.redirect_stdout(stdout_capture):
-            exec(compile(code, "<student_code>", "exec"),
-                 {"__builtins__": __builtins__}, local_vars)
-        return stdout_capture.getvalue().strip(), local_vars, None
-    except Exception as e:
-        return "", {}, str(e)
 
 
 def show_hints(quest_id, hints):
