@@ -17,6 +17,15 @@ This module is intentionally free of any Streamlit/session-state code and
 has no import-time side effects, so it's safe to import from a freshly
 spawned child process on any platform (important for Windows, which uses
 "spawn" instead of "fork" and re-imports the target module).
+
+Abuse protection lives in two places:
+  - `safe_exec` itself caps how many sandboxed processes may run at once,
+    process-wide, via a semaphore (protects the server regardless of how
+    many Streamlit sessions/users are hammering "Run" concurrently).
+  - Per-user/per-session throttling (how often *one* student can click
+    Run) is intentionally NOT handled here, since this module has no
+    notion of "session" — see `run_student_code()` in remote_tech_app.py
+    for that layer.
 """
 
 import builtins
@@ -24,6 +33,19 @@ import contextlib
 import io
 import multiprocessing as mp
 import queue as _queue
+import threading
+
+# ---------------------------------------------------------------------------
+# Process-wide concurrency cap. Each safe_exec() call spawns a real OS
+# process, which is by far the most expensive thing this app does — without
+# a cap, enough simultaneous "Run" clicks (accidental or deliberate) could
+# exhaust CPU/memory on the host. `_CONCURRENCY_WAIT_SECONDS` is how long a
+# call will queue for a free slot before giving up and reporting "busy"
+# rather than blocking the Streamlit session forever.
+# ---------------------------------------------------------------------------
+MAX_CONCURRENT_EXECUTIONS = 4
+_CONCURRENCY_WAIT_SECONDS = 5
+_concurrency_semaphore = threading.Semaphore(MAX_CONCURRENT_EXECUTIONS)
 
 # ---------------------------------------------------------------------------
 # Whitelisted builtins. Only what's needed for the current quest content
@@ -100,24 +122,36 @@ def safe_exec(code, timeout=3):
     Run student code in an isolated process with a restricted builtins
     namespace. Returns (stdout, local_vars, error) exactly like the old
     safe_exec did, so call sites don't need to change.
-    """
-    result_queue = mp.Queue()
-    proc = mp.Process(target=_worker, args=(code, result_queue), daemon=True)
-    proc.start()
-    proc.join(timeout)
 
-    if proc.is_alive():
-        proc.terminate()
-        proc.join(1)
-        if proc.is_alive():
-            proc.kill()
-            proc.join()
-        return "", {}, "Your code took too long to run (possible infinite loop). Try again!"
+    Blocks (briefly) for a free execution slot if the server is already
+    running MAX_CONCURRENT_EXECUTIONS sandboxes; if none frees up within
+    _CONCURRENCY_WAIT_SECONDS it fails soft with a "busy" message instead
+    of spawning an unbounded number of processes.
+    """
+    acquired = _concurrency_semaphore.acquire(timeout=_CONCURRENCY_WAIT_SECONDS)
+    if not acquired:
+        return "", {}, "The code sandbox is busy right now — please try again in a few seconds."
 
     try:
-        output, variables, error = result_queue.get_nowait()
-        return output, variables, error
-    except _queue.Empty:
-        # Process died without reporting (e.g. killed by the OS OOM killer
-        # or hit the memory rlimit hard) rather than raising MemoryError cleanly.
-        return "", {}, "Your code crashed or used too many resources. Try again!"
+        result_queue = mp.Queue()
+        proc = mp.Process(target=_worker, args=(code, result_queue), daemon=True)
+        proc.start()
+        proc.join(timeout)
+
+        if proc.is_alive():
+            proc.terminate()
+            proc.join(1)
+            if proc.is_alive():
+                proc.kill()
+                proc.join()
+            return "", {}, "Your code took too long to run (possible infinite loop). Try again!"
+
+        try:
+            output, variables, error = result_queue.get_nowait()
+            return output, variables, error
+        except _queue.Empty:
+            # Process died without reporting (e.g. killed by the OS OOM killer
+            # or hit the memory rlimit hard) rather than raising MemoryError cleanly.
+            return "", {}, "Your code crashed or used too many resources. Try again!"
+    finally:
+        _concurrency_semaphore.release()

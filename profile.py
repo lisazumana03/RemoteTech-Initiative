@@ -29,14 +29,23 @@ new_avatar = st.selectbox(
     index=AVATAR_OPTIONS.index(st.session_state.avatar)
     if st.session_state.avatar in AVATAR_OPTIONS else 0,
 )
+new_class_name = st.text_input(
+    "Class Code",
+    value=st.session_state.get("class_name", ""),
+    help="Ask your teacher for your class code. This determines which leaderboard and "
+         "class group your teacher sees you in.",
+)
 
 if st.button("Save Profile", type="primary"):
     if not new_full_name.strip():
         st.error("Full name cannot be empty.")
+    elif st.session_state.get("is_demo"):
+        st.warning("Demo accounts can't edit their profile — create a real account to save changes.")
     else:
-        update_profile(st.session_state.user_name, new_full_name, new_avatar)
+        update_profile(st.session_state.user_name, new_full_name, new_avatar, new_class_name.strip())
         st.session_state.full_name = new_full_name
         st.session_state.avatar = new_avatar
+        st.session_state.class_name = new_class_name.strip()
         st.success("Profile updated!")
         st.rerun()
 
@@ -50,7 +59,9 @@ new_password        = st.text_input("New Password",         type="password", key
 confirm_new_password = st.text_input("Confirm New Password", type="password", key="confirm_new_pw")
 
 if st.button("Update Password"):
-    if not current_password or not new_password or not confirm_new_password:
+    if st.session_state.get("is_demo"):
+        st.warning("Demo accounts can't change their password.")
+    elif not current_password or not new_password or not confirm_new_password:
         st.error("Please fill in all password fields.")
     elif new_password != confirm_new_password:
         st.error("New passwords do not match.")
@@ -93,7 +104,9 @@ with st.expander("⚠️ Delete my account and all my data"):
         key="delete_confirm"
     )
     if st.button("🗑️ Permanently Delete My Account", type="primary"):
-        if confirm_delete != st.session_state.username:
+        if st.session_state.get("is_demo"):
+            st.warning("Demo accounts can't be deleted — there's nothing saved to remove.")
+        elif confirm_delete != st.session_state.username:
             st.error("Username does not match. Deletion cancelled.")
         else:
             delete_user_data(st.session_state.username)

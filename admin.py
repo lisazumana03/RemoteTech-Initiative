@@ -6,6 +6,7 @@ from remotetech_data import (
     get_all_student_progress,
     get_inactive_students,
     get_quest_completion_stats,
+    get_all_classes,
 )
 
 init_db()
@@ -15,7 +16,11 @@ if not st.session_state.get("authenticated", False):
     st.switch_page("login.py")
     st.stop()
 
-if st.session_state.get("user_name") != "admin":
+# NOTE: this used to check `user_name != "admin"`, which only ever matched
+# a hardcoded username. It now checks the actual `role` set at login/seed
+# time (see seed_admin.py), which is what main.py's navigation menu uses
+# to decide whether to show this page in the first place.
+if st.session_state.get("role") != "admin":
     st.error("⛔ You do not have permission to view this page.")
     st.stop()
 
@@ -23,9 +28,21 @@ st.set_page_config(page_title="Admin Dashboard", page_icon="🛡️", layout="wi
 st.title("🛡️ Teacher / Admin Dashboard")
 st.caption("RemoteTech Sterkspruit Pilot — Class Overview")
 
-students    = get_all_student_progress()
-quest_stats = get_quest_completion_stats()
-inactive    = get_inactive_students(days=7)
+# ====================== CLASS SCOPE ======================
+# Admins/teachers only see their own class by default (matching the class
+# code on their own account, set at registration or on their Profile page),
+# but can switch to any other class, or "All Classes", from the dropdown.
+all_classes = get_all_classes()
+own_class = st.session_state.get("class_name") or None
+class_options = ["All Classes"] + all_classes
+default_index = class_options.index(own_class) if own_class in class_options else 0
+
+selected_class = st.selectbox("🏫 Class", class_options, index=default_index)
+scope = None if selected_class == "All Classes" else selected_class
+
+students    = get_all_student_progress(class_name=scope)
+quest_stats = get_quest_completion_stats(class_name=scope)
+inactive    = get_inactive_students(days=7, class_name=scope)
 
 # ====================== TOP METRICS ======================
 total_students  = len(students)
@@ -50,17 +67,21 @@ search = st.text_input("🔍 Search by name or username", "")
 rows = []
 for s in students:
     if search.lower() in s["full_name"].lower() or search.lower() in s["user_name"].lower():
-        rows.append({
+        row = {
             "Name":         s["full_name"],
             "Username":     s["user_name"],
             "Points":       s["points"],
             "Quests Done":  f"{s['lessons_count']} / 6",
             "Badges":       ", ".join(s["badges"]) if s["badges"] else "None",
-            "Last Active":  s["last_active"] or "Never",
+            "Last Active":  s.get("last_active") or "Never",
             "Status":       "✅ Complete"   if s["lessons_count"] >= 6
                             else ("⚠️ In Progress" if s["lessons_count"] > 0
                             else "🔴 Not Started"),
-        })
+        }
+        if scope is None:
+            # Only show the Class column when viewing multiple classes at once.
+            row["Class"] = s.get("class_name") or "Unassigned"
+        rows.append(row)
 
 if rows:
     df = pd.DataFrame(rows)

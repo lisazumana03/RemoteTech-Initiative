@@ -10,6 +10,11 @@ st.title("🚀 RemoteTech — Create an Account")
 full_name           = st.text_input("Full Name")
 username            = st.text_input("Username")
 email               = st.text_input("Email")
+class_name          = st.text_input(
+    "Class Code",
+    help="Ask your teacher for your class code (e.g. 'Sterkspruit-A'). "
+         "Leave blank if you don't have one yet — you can add it later on your Profile page.",
+)
 password            = st.text_input("Password", type="password")
 confirm_password    = st.text_input("Confirm Password", type="password")
 
@@ -69,7 +74,8 @@ if st.button("Register", type="primary"):
             email=email, 
             password=password, 
             avatar=avatar,  
-            popia_consent=True
+            popia_consent=True,
+            class_name=class_name.strip(),
         )
         if success:
             # Pre-load session so full name is available immediately on login
