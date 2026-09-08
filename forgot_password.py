@@ -34,6 +34,7 @@ if st.button("Send Reset Link", type="primary"):
         )
 
         if token:
+            reset_path = f"forgot_password.py?token={token}"  # placeholder, real link below
             reset_link = (
                 f"{APP_BASE_URL}/reset_password?token={token}"
                 if APP_BASE_URL else

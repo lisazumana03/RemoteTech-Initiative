@@ -7,7 +7,7 @@ if not st.session_state.get("authenticated", False):
 
 import io
 import sys
-import contextlib
+import time
 import pandas as pd
 import plotly.express as px
 from datetime import datetime
@@ -21,6 +21,46 @@ from remotetech_data import (
     save_quest_time,
     get_leaderboard,
 )
+from sandbox import safe_exec
+
+# ====================== RUN-BUTTON RATE LIMITING ======================
+# Per-session throttle on top of sandbox.py's process-wide concurrency cap:
+# a short cooldown between runs (stops rapid-fire clicking) plus a cap on
+# runs per rolling minute (stops one session from hogging the sandbox even
+# at a slow-but-steady pace). This is deliberately generous — it's abuse
+# protection, not a puzzle for students to work around.
+RATE_LIMIT_COOLDOWN_SECONDS = 2
+RATE_LIMIT_MAX_RUNS_PER_WINDOW = 10
+RATE_LIMIT_WINDOW_SECONDS = 60
+
+
+def _check_run_rate_limit():
+    """Returns (allowed: bool, message: str | None)."""
+    now = time.time()
+    timestamps = st.session_state.setdefault("run_timestamps", [])
+    timestamps[:] = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW_SECONDS]
+
+    if timestamps and (now - timestamps[-1]) < RATE_LIMIT_COOLDOWN_SECONDS:
+        wait = RATE_LIMIT_COOLDOWN_SECONDS - (now - timestamps[-1])
+        return False, f"⏳ Please wait {wait:.1f}s before running your code again."
+
+    if len(timestamps) >= RATE_LIMIT_MAX_RUNS_PER_WINDOW:
+        return False, (
+            f"⏳ You've hit the limit of {RATE_LIMIT_MAX_RUNS_PER_WINDOW} runs per minute. "
+            "Take a breather and try again shortly."
+        )
+
+    timestamps.append(now)
+    return True, None
+
+
+def run_student_code(code, timeout=3):
+    """Rate-limited wrapper around sandbox.safe_exec — use this everywhere
+    the app runs student-submitted code, instead of calling safe_exec directly."""
+    allowed, message = _check_run_rate_limit()
+    if not allowed:
+        return "", {}, message
+    return safe_exec(code, timeout=timeout)
 
 # ====================== PAGE CONFIG ======================
 st.set_page_config(page_title="RemoteTech", page_icon="🚀", layout="wide")
@@ -39,6 +79,9 @@ defaults = {
     "show_certificate": False,
     "active_quest": None,
     "quest_start_time": None,
+    "school": "",
+    "class_name": "",
+    "is_demo": False,
 }
 for key, val in defaults.items():
     if key not in st.session_state:
@@ -60,6 +103,11 @@ st.markdown("""
 
 # ====================== HELPERS ======================
 def persist_progress():
+    # Demo/trial sessions never write back to the database — the demo
+    # account is shared by every visitor, so saving would let one
+    # visitor's demo progress leak into another's session.
+    if st.session_state.get("is_demo"):
+        return
     db_user = st.session_state.get("db_user_name")
     if not db_user:
         return
@@ -69,24 +117,6 @@ def persist_progress():
         st.session_state.badges,
         st.session_state.completed_lessons,
     )
-
-
-BLOCKED = ["import os", "import sys", "import subprocess", "open(", "__import__"]
-
-def safe_exec(code):
-    """Run student code safely. Returns (stdout, local_vars, error)."""
-    for term in BLOCKED:
-        if term in code:
-            return "", {}, f"'{term}' is not allowed in this exercise."
-    stdout_capture = io.StringIO()
-    local_vars = {}
-    try:
-        with contextlib.redirect_stdout(stdout_capture):
-            exec(compile(code, "<student_code>", "exec"),
-                 {"__builtins__": __builtins__}, local_vars)
-        return stdout_capture.getvalue().strip(), local_vars, None
-    except Exception as e:
-        return "", {}, str(e)
 
 
 def show_hints(quest_id, hints):
@@ -110,7 +140,8 @@ def record_time_and_save(quest_id, points_to_add, badge=None):
     st.session_state.completed_lessons.add(quest_id)
     if badge and badge not in st.session_state.badges:
         st.session_state.badges.append(badge)
-    save_quest_time(st.session_state.get("db_user_name", ""), quest_id, seconds)
+    if not st.session_state.get("is_demo"):
+        save_quest_time(st.session_state.get("db_user_name", ""), quest_id, seconds)
     persist_progress()
 
 
@@ -181,6 +212,13 @@ if st.sidebar.button("🚪 Logout", use_container_width=True):
     st.switch_page("login.py")
     st.stop()
 
+if st.session_state.get("is_demo"):
+    st.info(
+        "🎮 **You're in Demo Mode.** Feel free to explore — nothing you do here is saved. "
+        "Ready to keep your progress for real? Head to the Register page to create your own account.",
+        icon="🎮",
+    )
+
 # ====================== HOME ======================
 if page == "🏠 Home Base":
     st.title("🚀 RemoteTech Adventure")
@@ -245,7 +283,7 @@ elif page == "📚 Learning Quests":
             'bread = 15\nmilk = 18\nchips = 12\ntotal = bread + milk + chips\nprint("Total: R" + str(total))')
 
         if st.button("Run ✨", key="run_1"):
-            output, variables, error = safe_exec(code)
+            output, variables, error = run_student_code(code)
             if error:
                 st.error(f"❌ Error: {error}")
             elif "total" not in variables:
@@ -274,7 +312,7 @@ elif page == "📚 Learning Quests":
             'distance = 10\nrate = 5\nfare = distance * rate\nprint("Fare: R" + str(fare))')
 
         if st.button("Calculate Fare ✨", key="run_2"):
-            output, variables, error = safe_exec(code)
+            output, variables, error = run_student_code(code)
             if error:
                 st.error(f"❌ Error: {error}")
             elif "fare" not in variables:
@@ -303,7 +341,7 @@ elif page == "📚 Learning Quests":
             'weather = "rainy"\nif weather == "sunny":\n    print("Go outside and play!")\nelif weather == "rainy":\n    print("Stay inside and read a book!")\nelse:\n    print("Check the weather again!")')
 
         if st.button("Decide ✨", key="run_3"):
-            output, variables, error = safe_exec(code)
+            output, variables, error = run_student_code(code)
             if error:
                 st.error(f"❌ Error: {error}")
             elif "weather" not in variables:
@@ -334,7 +372,7 @@ elif page == "📚 Learning Quests":
             'items = ["Bread", "Milk", "Chips"]\nfor item in items:\n    print("Restocking " + item)')
 
         if st.button("Restock ✨", key="run_4"):
-            output, variables, error = safe_exec(code)
+            output, variables, error = run_student_code(code)
             if error:
                 st.error(f"❌ Error: {error}")
             elif "items" not in variables or not isinstance(variables.get("items"), list):
@@ -363,7 +401,7 @@ elif page == "📚 Learning Quests":
             'def calculate_total(prices):\n    total = sum(prices)\n    return total\n\nprices = [15, 18, 12]\ntotal_price = calculate_total(prices)\nprint("Total Price: R" + str(total_price))')
 
         if st.button("Calculate Total ✨", key="run_5"):
-            output, variables, error = safe_exec(code)
+            output, variables, error = run_student_code(code)
             if error:
                 st.error(f"❌ Error: {error}")
             elif "def " not in code:
@@ -397,7 +435,7 @@ elif page == "📚 Learning Quests":
             'prices = [12, 18, 25, 8, 30]\nnew_prices = [p + 3 for p in prices]\nexpensive = [p for p in prices if p > 20]\nprint(new_prices)\nprint(expensive)')
 
         if st.button("✨ Cast Magic!", key="run_6"):
-            output, variables, error = safe_exec(code)
+            output, variables, error = run_student_code(code)
             if error:
                 st.error(f"❌ Error: {error}")
             elif "new_prices" not in variables or "expensive" not in variables:
@@ -429,7 +467,7 @@ elif page == "🛒 Spaza Shop Project":
         '# Your Spaza Shop System\nitems = ["Bread", "Milk", "Chips", "Eggs"]\nprices = [15, 18, 12, 20]\n\ndef calculate_total(cart):\n    return sum(cart)\n\ncart = [prices[0], prices[2]]  # Bread + Chips\nprint("Items in cart:", [items[i] for i in range(len(cart))])\nprint("Total: R", calculate_total(cart))\n')
 
     if st.button("🚀 Launch Spaza Shop", type="primary"):
-        output, variables, error = safe_exec(code)
+        output, variables, error = run_student_code(code)
         if error:
             st.error(f"Fix this: {error}")
         else:
@@ -450,7 +488,7 @@ elif page == "🧪 Magic Code Lab":
     st.write("Experiment freely — no grading here!")
     code = st.text_area("Write anything:", height=350)
     if st.button("Run Code ✨"):
-        output, _, error = safe_exec(code)
+        output, _, error = run_student_code(code)
         if error:
             st.error(f"Error: {error}")
         else:
@@ -460,7 +498,12 @@ elif page == "🧪 Magic Code Lab":
 # ====================== LEADERBOARD ======================
 elif page == "🏆 Hero Leaderboard":
     st.header("🏆 Hero Leaderboard")
-    leaderboard_data = get_leaderboard()
+    user_class = st.session_state.get("class_name")
+    if user_class:
+        st.caption(f"Showing your class: **{user_class}**")
+    else:
+        st.caption("You're not assigned to a class yet, so this shows everyone.")
+    leaderboard_data = get_leaderboard(class_name=user_class)
     if leaderboard_data:
         df = pd.DataFrame(leaderboard_data)
         df.insert(0, "Position", range(1, len(df) + 1))
