@@ -1,5 +1,8 @@
 import streamlit as st
-from remotetech_data import init_db, update_profile, update_password, login_user, delete_user_data
+from remotetech_data import (
+    init_db, update_profile, update_password, login_user, delete_user_data,
+    create_progress_share,
+)
 
 init_db()
 
@@ -16,6 +19,20 @@ if "avatar" not in st.session_state:
 st.title("👤 My Profile")
 st.markdown(f"## {st.session_state.avatar} {st.session_state.full_name}")
 st.caption(f"Username: {st.session_state.username}")
+
+st.divider()
+
+st.subheader("📈 Share Progress")
+st.caption("Create a read-only link for a parent or teacher. It expires after 30 days.")
+if st.button("Create Progress Link"):
+    if st.session_state.get("is_demo"):
+        st.warning("Demo progress links are disabled.")
+    else:
+        token = create_progress_share(st.session_state.user_name)
+        st.session_state.progress_share_url = f"/share?token={token}"
+if st.session_state.get("progress_share_url"):
+    st.code(st.session_state.progress_share_url, language=None)
+    st.caption("Append this path to your RemoteTech site address before sharing it.")
 
 st.divider()
 

@@ -20,6 +20,9 @@ if "avatar" not in st.session_state:
 
 st.title("🚀 RemoteTech — Login")
 
+if st.button("About RemoteTech"):
+    st.switch_page("landing.py")
+
 
 def _start_session(user, is_demo=False):
     st.session_state.authenticated = True

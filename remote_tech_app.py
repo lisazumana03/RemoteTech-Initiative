@@ -21,7 +21,10 @@ from remotetech_data import (
     save_quest_time,
     get_leaderboard,
 )
+from branding import apply_branding, get_branding, text
 from sandbox import safe_exec
+import quests_store
+import quest_engine
 
 # ====================== RUN-BUTTON RATE LIMITING ======================
 # Per-session throttle on top of sandbox.py's process-wide concurrency cap:
@@ -65,6 +68,9 @@ def run_student_code(code, timeout=3):
 # ====================== PAGE CONFIG ======================
 st.set_page_config(page_title="RemoteTech", page_icon="🚀", layout="wide")
 init_db()
+quests_store.init_quests_table()
+branding = get_branding(st.session_state.get("school", ""))
+apply_branding(branding)
 
 # ====================== SESSION STATE DEFAULTS ======================
 defaults = {
@@ -176,24 +182,38 @@ def generate_certificate_pdf(user_name, points, date_str):
 
 
 # ====================== QUEST DEFINITIONS ======================
-QUESTS = [
-    {"id": "1", "title": "Spaza Shop Variables",   "points": 150, "icon": "🛒"},
-    {"id": "2", "title": "Taxi Fare Calculator",   "points": 150, "icon": "🚕"},
-    {"id": "3", "title": "Rainy Day Decisions",    "points": 150, "icon": "🌧️"},
-    {"id": "4", "title": "Spaza Restocking Loops", "points": 150, "icon": "📦"},
-    {"id": "5", "title": "Super Functions",        "points": 150, "icon": "🦸"},
-    {"id": "6", "title": "Super Spaza List Magic", "points": 280, "icon": "✨"},
-]
+# Loaded from the database (seeded from quests_seed.json the first time the
+# app runs) instead of hardcoded here — an admin can add, edit or reorder
+# quests from the Admin Dashboard with no code change or redeploy. See
+# quests_store.py and quest_engine.py.
+QUESTS = quests_store.get_all_quests()
+QUESTS_BY_ID = {q["id"]: q for q in QUESTS}
+
+# The original "core curriculum" — completing these earns the certificate.
+# Extra quest sets (dictionaries, mini-projects, ...) are bonus content and
+# don't block certification, so adding more content never moves the goalposts
+# for a student who's already close to finishing.
+CORE_QUEST_SET = "foundations"
+CORE_QUEST_IDS = [q["id"] for q in QUESTS if q.get("quest_set", CORE_QUEST_SET) == CORE_QUEST_SET]
 
 # ====================== SIDEBAR ======================
 st.sidebar.markdown(f"## {st.session_state.avatar} {st.session_state.user_name}")
+st.sidebar.caption(branding["school_name"])
+language_options = {"English": "en", "isiXhosa": "xh", "Afrikaans": "af"}
+selected_language = st.sidebar.selectbox(
+    text("language"), list(language_options),
+    index=list(language_options.values()).index(st.session_state.get("language", "en")),
+)
+if language_options[selected_language] != st.session_state.get("language", "en"):
+    st.session_state.language = language_options[selected_language]
+    st.rerun()
 st.sidebar.markdown("## 🎮 Menu")
 page = st.sidebar.radio("Choose your adventure:", [
-    "🏠 Home Base",
-    "📚 Learning Quests",
+    f"🏠 {text('home')}",
+    f"📚 {text('quests')}",
     "🛒 Spaza Shop Project",
     "🧪 Magic Code Lab",
-    "🏆 Hero Leaderboard",
+    f"🏆 {text('leaderboard')}",
     "📊 Village Impact",
 ])
 
@@ -220,8 +240,8 @@ if st.session_state.get("is_demo"):
     )
 
 # ====================== HOME ======================
-if page == "🏠 Home Base":
-    st.title("🚀 RemoteTech Adventure")
+if page == f"🏠 {text('home')}":
+    st.title(f"🚀 {branding['school_name']} Adventure")
     st.markdown("### *Sterkspruit Heroes – Learn Python & Build Your Future!* 🌟")
     st.markdown(f"## Welcome back, *{st.session_state.full_name}*! 👋 You're a superstar! 🔥")
 
@@ -232,22 +252,23 @@ if page == "🏠 Home Base":
         st.metric("🏅 Badges", len(st.session_state.badges))
     with col3:
         completed = len(st.session_state.completed_lessons)
-        st.metric("📚 Quests Done", f"{completed} / 6")
+        st.metric("📚 Quests Done", f"{completed} / {len(QUESTS)}")
 
     if st.session_state.badges:
         st.markdown("### Your Badges")
         st.write("  ".join(st.session_state.badges))
 
-    if len(st.session_state.completed_lessons) >= 5:
+    core_done = sum(1 for qid in CORE_QUEST_IDS if qid in st.session_state.completed_lessons)
+    if core_done >= len(CORE_QUEST_IDS) - 1 and core_done < len(CORE_QUEST_IDS):
         st.success("🎓 You are close to earning your Certificate!")
 
-    if len(st.session_state.completed_lessons) >= 6:
+    if core_done >= len(CORE_QUEST_IDS):
         if st.button("Claim Certificate 🏅", type="primary"):
             st.session_state.show_certificate = True
             st.rerun()
 
 # ====================== LEARNING QUESTS ======================
-elif page == "📚 Learning Quests":
+elif page == f"📚 {text('quests')}":
     st.header("🌟 Your Learning Quests")
 
     # Quest selection grid
@@ -275,188 +296,39 @@ elif page == "📚 Learning Quests":
 
     st.divider()
 
-    # ---- Quest 1 ----
-    if active == "1":
-        st.markdown("### 🛒 Quest 1: Spaza Shop Variables")
-        st.write("Create variables for three items and calculate the total stock value.")
-        code = st.text_area("Write your code:", height=180, key="code_1", value=
-            'bread = 15\nmilk = 18\nchips = 12\ntotal = bread + milk + chips\nprint("Total: R" + str(total))')
+    quest = QUESTS_BY_ID.get(active)
+    if quest is None:
+        st.error("This quest is no longer available.")
+        st.stop()
 
-        if st.button("Run ✨", key="run_1"):
-            output, variables, error = run_student_code(code)
-            if error:
-                st.error(f"❌ Error: {error}")
-            elif "total" not in variables:
-                show_hints("1", [
-                    "You need to store three numbers — what Python keyword creates a named value?",
-                    "Try: bread = 15 — now do the same for milk and chips.",
-                    "Add them: total = bread + milk + chips, then print('Total: R' + str(total))",
-                ])
-            elif not isinstance(variables.get("total"), (int, float)):
-                st.warning("💡 `total` should be a number — try adding your variables together.")
-            elif not output:
-                st.warning("💡 Your code runs but prints nothing — add a print() statement.")
-            else:
-                if "1" not in st.session_state.completed_lessons:
-                    record_time_and_save("1", 150)
-                    st.success("🎉 Perfect! +150 points")
+    st.markdown(f"### {quest['icon']} Quest {quest['id']}: {quest['title']}")
+    st.write(quest["description"])
+    code = st.text_area(
+        "Write your code:",
+        height=quest.get("editor_height", 200),
+        key=f"code_{quest['id']}",
+        value=quest["starter_code"],
+    )
+
+    if st.button(quest.get("run_button_label", "Run ✨"), key=f"run_{quest['id']}"):
+        output, variables, error = run_student_code(code)
+        if error:
+            st.error(f"❌ Error: {error}")
+        else:
+            result = quest_engine.evaluate_quest(quest, code, output, variables)
+            if result["passed"]:
+                if quest["id"] not in st.session_state.completed_lessons:
+                    record_time_and_save(quest["id"], quest["points"], quest.get("badge"))
+                    st.success(quest.get("success_message", f"🎉 Well done! +{quest['points']} points"))
                     st.balloons()
                 else:
-                    st.info("Quest 1 already completed — great work! ✅")
-
-    # ---- Quest 2 ----
-    elif active == "2":
-        st.markdown("### 🚕 Quest 2: Taxi Fare Calculator")
-        st.write("Calculate taxi fare based on distance and rate per km.")
-        code = st.text_area("Write your code:", height=180, key="code_2", value=
-            'distance = 10\nrate = 5\nfare = distance * rate\nprint("Fare: R" + str(fare))')
-
-        if st.button("Calculate Fare ✨", key="run_2"):
-            output, variables, error = run_student_code(code)
-            if error:
-                st.error(f"❌ Error: {error}")
-            elif "fare" not in variables:
-                show_hints("2", [
-                    "You need a variable called `fare` — what calculation gives you the fare?",
-                    "Fare = distance × rate. Try: fare = distance * rate",
-                    "Now print it: print('Fare: R' + str(fare))",
-                ])
-            elif variables.get("fare") != variables.get("distance", 0) * variables.get("rate", 0):
-                st.warning("💡 `fare` should equal `distance × rate`. Check your formula.")
-            elif str(variables.get("fare", "")) not in output:
-                st.warning(f"💡 Print the fare! Got: `{output}`")
+                    st.info(f"Quest {quest['id']} already completed — great work! ✅")
+            elif result.get("hints"):
+                show_hints(quest["id"], result["hints"])
             else:
-                if "2" not in st.session_state.completed_lessons:
-                    record_time_and_save("2", 150)
-                    st.success("🎉 Great work! +150 points")
-                    st.balloons()
-                else:
-                    st.info("Quest 2 already completed ✅")
+                st.warning(result.get("message", "💡 Not quite — check your code and try again."))
 
-    # ---- Quest 3 ----
-    elif active == "3":
-        st.markdown("### 🌧️ Quest 3: Rainy Day Decisions")
-        st.write("Use if-elif-else to decide what to do based on the weather.")
-        code = st.text_area("Write your code:", height=250, key="code_3", value=
-            'weather = "rainy"\nif weather == "sunny":\n    print("Go outside and play!")\nelif weather == "rainy":\n    print("Stay inside and read a book!")\nelse:\n    print("Check the weather again!")')
-
-        if st.button("Decide ✨", key="run_3"):
-            output, variables, error = run_student_code(code)
-            if error:
-                st.error(f"❌ Error: {error}")
-            elif "weather" not in variables:
-                show_hints("3", [
-                    "Start by creating a variable: weather = 'rainy'",
-                    "Use `if` to check one condition, `elif` for another.",
-                    "if weather == 'sunny': ... elif weather == 'rainy': ... else: ...",
-                ])
-            elif "if" not in code or "elif" not in code:
-                st.warning("💡 You need both an `if` and an `elif` block.")
-            elif not output:
-                st.warning("💡 Your code runs but prints nothing — add print() inside each block.")
-            elif variables.get("weather") == "rainy" and "inside" not in output.lower() and "book" not in output.lower():
-                st.warning(f"💡 When weather is 'rainy' suggest staying inside. Got: `{output}`")
-            else:
-                if "3" not in st.session_state.completed_lessons:
-                    record_time_and_save("3", 150)
-                    st.success("🎉 Excellent! +150 points")
-                    st.balloons()
-                else:
-                    st.info("Quest 3 already completed ✅")
-
-    # ---- Quest 4 ----
-    elif active == "4":
-        st.markdown("### 📦 Quest 4: Spaza Restocking Loops")
-        st.write("Use a for loop to print a restocking message for every item.")
-        code = st.text_area("Write your code:", height=180, key="code_4", value=
-            'items = ["Bread", "Milk", "Chips"]\nfor item in items:\n    print("Restocking " + item)')
-
-        if st.button("Restock ✨", key="run_4"):
-            output, variables, error = run_student_code(code)
-            if error:
-                st.error(f"❌ Error: {error}")
-            elif "items" not in variables or not isinstance(variables.get("items"), list):
-                show_hints("4", [
-                    "Create a list called `items` with some product names.",
-                    "Use: items = ['Bread', 'Milk', 'Chips']",
-                    "Then loop: for item in items:  print('Restocking ' + item)",
-                ])
-            elif "for" not in code:
-                st.warning("💡 You need a `for` loop to go through each item.")
-            elif len(output.splitlines()) < len(variables.get("items", [])):
-                st.warning(f"💡 Your loop should print one line per item — got {len(output.splitlines())} line(s) for {len(variables.get('items', []))} item(s).")
-            else:
-                if "4" not in st.session_state.completed_lessons:
-                    record_time_and_save("4", 150)
-                    st.success("🎉 Well done! +150 points")
-                    st.balloons()
-                else:
-                    st.info("Quest 4 already completed ✅")
-
-    # ---- Quest 5 ----
-    elif active == "5":
-        st.markdown("### 🦸 Quest 5: Super Functions")
-        st.write("Define a function called `calculate_total` that takes a list of prices and returns their sum.")
-        code = st.text_area("Write your code:", height=250, key="code_5", value=
-            'def calculate_total(prices):\n    total = sum(prices)\n    return total\n\nprices = [15, 18, 12]\ntotal_price = calculate_total(prices)\nprint("Total Price: R" + str(total_price))')
-
-        if st.button("Calculate Total ✨", key="run_5"):
-            output, variables, error = run_student_code(code)
-            if error:
-                st.error(f"❌ Error: {error}")
-            elif "def " not in code:
-                show_hints("5", [
-                    "You need to define a function — start with `def`.",
-                    "def calculate_total(prices):  — now add the body.",
-                    "Inside the function: total = sum(prices)  then  return total",
-                ])
-            elif "calculate_total" not in variables or not callable(variables.get("calculate_total")):
-                st.warning("💡 Name your function exactly `calculate_total`.")
-            else:
-                try:
-                    result = variables["calculate_total"]([10, 20, 30])
-                    if result != 60:
-                        st.warning(f"💡 Your function returned `{result}` for [10, 20, 30] — expected 60. Check your sum() logic.")
-                    else:
-                        if "5" not in st.session_state.completed_lessons:
-                            record_time_and_save("5", 150)
-                            st.success("🎉 Fantastic! +150 points")
-                            st.balloons()
-                        else:
-                            st.info("Quest 5 already completed ✅")
-                except Exception as e:
-                    st.error(f"❌ Your function crashed when called: {e}")
-
-    # ---- Quest 6 ----
-    elif active == "6":
-        st.markdown("### ✨ Quest 6: Super Spaza List Magic")
-        st.write("Use list comprehensions to raise all prices by R3, and filter prices above R20.")
-        code = st.text_area("Write your code:", height=250, key="code_6", value=
-            'prices = [12, 18, 25, 8, 30]\nnew_prices = [p + 3 for p in prices]\nexpensive = [p for p in prices if p > 20]\nprint(new_prices)\nprint(expensive)')
-
-        if st.button("✨ Cast Magic!", key="run_6"):
-            output, variables, error = run_student_code(code)
-            if error:
-                st.error(f"❌ Error: {error}")
-            elif "new_prices" not in variables or "expensive" not in variables:
-                show_hints("6", [
-                    "You need two lists: `new_prices` and `expensive`.",
-                    "Use a list comprehension: [p + 3 for p in prices]",
-                    "Filter expensive ones: [p for p in prices if p > 20]",
-                ])
-            elif not isinstance(variables.get("new_prices"), list):
-                st.warning("💡 `new_prices` should be a list — use a list comprehension.")
-            elif variables.get("new_prices") != [p + 3 for p in variables.get("prices", [])]:
-                st.warning(f"💡 `new_prices` should add 3 to every price. Got: `{variables.get('new_prices')}`")
-            elif variables.get("expensive") != [p for p in variables.get("prices", []) if p > 20]:
-                st.warning(f"💡 `expensive` should only include prices above 20. Got: `{variables.get('expensive')}`")
-            else:
-                if "6" not in st.session_state.completed_lessons:
-                    record_time_and_save("6", 280)
-                    st.success("🎉 Masterful! +280 points")
-                    st.balloons()
-                else:
-                    st.info("Quest 6 already completed ✅")
+    st.stop()
 
 # ====================== SPAZA SHOP PROJECT ======================
 elif page == "🛒 Spaza Shop Project":
@@ -496,7 +368,7 @@ elif page == "🧪 Magic Code Lab":
             st.success("✅ Ran successfully!")
 
 # ====================== LEADERBOARD ======================
-elif page == "🏆 Hero Leaderboard":
+elif page == f"🏆 {text('leaderboard')}":
     st.header("🏆 Hero Leaderboard")
     user_class = st.session_state.get("class_name")
     if user_class:
@@ -525,7 +397,8 @@ elif page == "📊 Village Impact":
     st.plotly_chart(fig)
 
 # ====================== CERTIFICATE ======================
-if st.session_state.get("show_certificate") or len(st.session_state.completed_lessons) >= 6:
+core_done_count = sum(1 for qid in CORE_QUEST_IDS if qid in st.session_state.completed_lessons)
+if st.session_state.get("show_certificate") or core_done_count >= len(CORE_QUEST_IDS):
     st.divider()
     st.markdown('<div class="certificate">', unsafe_allow_html=True)
     st.markdown("# 🎓 Certificate of Completion")

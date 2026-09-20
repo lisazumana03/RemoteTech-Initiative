@@ -1,4 +1,4 @@
-"""School branding shared by the Streamlit pages."""
+"""School branding and language settings shared by the Streamlit pages."""
 
 import streamlit as st
 
@@ -10,6 +10,13 @@ DEFAULT_BRANDING = {
     "logo_url": "",
     "primary_color": "#22d3ee",
     "accent_color": "#fbbf24",
+    "language": "en",
+}
+
+TRANSLATIONS = {
+    "en": {"home": "Home Base", "quests": "Learning Quests", "leaderboard": "Hero Leaderboard", "profile": "My Profile", "logout": "Logout", "welcome": "Welcome back", "points": "Points", "badges": "Badges", "quests_done": "Quests Done", "share_progress": "Share Progress", "language": "Language"},
+    "xh": {"home": "Ikhaya", "quests": "Izifundo Zokufunda", "leaderboard": "Uluhlu Lwamaqhawe", "profile": "Iprofayile Yam", "logout": "Phuma", "welcome": "Wamkelekile kwakhona", "points": "Amanqaku", "badges": "Iibheji", "quests_done": "Izifundo Ezininzi", "share_progress": "Yabelana Ngempumelelo", "language": "Ulwimi"},
+    "af": {"home": "Tuisbasis", "quests": "Leeruitdagings", "leaderboard": "Helde-ranglys", "profile": "My Profiel", "logout": "Teken uit", "welcome": "Welkom terug", "points": "Punte", "badges": "Kentekens", "quests_done": "Uitdagings voltooi", "share_progress": "Deel vordering", "language": "Taal"},
 }
 
 
@@ -21,7 +28,8 @@ def init_branding_table():
             school_name TEXT PRIMARY KEY,
             logo_url TEXT NOT NULL DEFAULT '',
             primary_color TEXT NOT NULL DEFAULT '#22d3ee',
-            accent_color TEXT NOT NULL DEFAULT '#fbbf24'
+            accent_color TEXT NOT NULL DEFAULT '#fbbf24',
+            language TEXT NOT NULL DEFAULT 'en'
         )
     """)
     conn.commit()
@@ -35,7 +43,7 @@ def get_branding(school_name):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(adapt("""
-        SELECT school_name, logo_url, primary_color, accent_color
+        SELECT school_name, logo_url, primary_color, accent_color, language
         FROM school_branding WHERE school_name = ?
     """), (school_name,))
     row = cur.fetchone()
@@ -44,24 +52,31 @@ def get_branding(school_name):
         values = DEFAULT_BRANDING.copy()
         values["school_name"] = school_name
         return values
-    return dict(zip(("school_name", "logo_url", "primary_color", "accent_color"), row))
+    return dict(zip(("school_name", "logo_url", "primary_color", "accent_color", "language"), row))
 
 
-def save_branding(school_name, logo_url, primary_color, accent_color):
+def save_branding(school_name, logo_url, primary_color, accent_color, language):
     init_branding_table()
     conn = get_connection()
     cur = conn.cursor()
     cur.execute(adapt("""
-        INSERT INTO school_branding (school_name, logo_url, primary_color, accent_color)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO school_branding (school_name, logo_url, primary_color, accent_color, language)
+        VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(school_name) DO UPDATE SET logo_url=excluded.logo_url,
-            primary_color=excluded.primary_color, accent_color=excluded.accent_color
-    """), (school_name, logo_url.strip(), primary_color, accent_color))
+            primary_color=excluded.primary_color, accent_color=excluded.accent_color,
+            language=excluded.language
+    """), (school_name, logo_url.strip(), primary_color, accent_color, language))
     conn.commit()
     conn.close()
 
 
+def text(key):
+    language = st.session_state.get("language", "en")
+    return TRANSLATIONS.get(language, TRANSLATIONS["en"]).get(key, key)
+
+
 def apply_branding(branding):
+    st.session_state.language = branding.get("language", "en")
     st.markdown(
         f"""
         <style>
