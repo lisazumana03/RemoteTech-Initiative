@@ -1,8 +1,12 @@
+import os
+
 import streamlit as st
 from remotetech_data import (
     init_db, update_profile, update_password, login_user, delete_user_data,
     create_progress_share,
 )
+from branding import apply_branding, get_branding
+from email_utils import send_email, is_configured as is_email_configured
 
 init_db()
 
@@ -10,6 +14,13 @@ if not st.session_state.get("authenticated", False):
     st.warning("Please login first.")
     st.switch_page("login.py")
     st.stop()
+
+apply_branding(get_branding(st.session_state.get("school", "")))
+
+# Same env var forgot_password.py uses to build an absolute reset link —
+# reused here so a shared/emailed progress link is a real clickable URL
+# instead of a bare path when the deployment's public URL is known.
+APP_BASE_URL = os.environ.get("APP_BASE_URL", "").rstrip("/")
 
 AVATAR_OPTIONS = ["🚀", "🦸", "🧑‍💻", "🌟", "🔥", "🛒", "🧪", "🏅"]
 
@@ -23,16 +34,48 @@ st.caption(f"Username: {st.session_state.username}")
 st.divider()
 
 st.subheader("📈 Share Progress")
-st.caption("Create a read-only link for a parent or teacher. It expires after 30 days.")
+st.caption("Create a read-only link for a parent or teacher, or email it to them directly. It expires after 30 days.")
+
 if st.button("Create Progress Link"):
     if st.session_state.get("is_demo"):
         st.warning("Demo progress links are disabled.")
     else:
         token = create_progress_share(st.session_state.user_name)
-        st.session_state.progress_share_url = f"/share?token={token}"
+        share_path = f"/share?token={token}"
+        st.session_state.progress_share_url = f"{APP_BASE_URL}{share_path}" if APP_BASE_URL else share_path
+
 if st.session_state.get("progress_share_url"):
     st.code(st.session_state.progress_share_url, language=None)
-    st.caption("Append this path to your RemoteTech site address before sharing it.")
+    if not APP_BASE_URL:
+        st.caption("Append this path to your RemoteTech site address before sharing it.")
+
+    st.markdown("**Email it to a parent or teacher:**")
+    recipient_email = st.text_input("Their email address", key="share_email_to")
+    if st.button("📧 Email Progress Link"):
+        if not recipient_email.strip():
+            st.error("Please enter an email address.")
+        elif not is_email_configured():
+            # Same fallback behaviour as forgot_password.py: no mail server
+            # configured on this deployment yet, so point back at the link
+            # rather than silently failing.
+            st.warning(
+                "Email isn't configured on this deployment yet — please copy the link "
+                "above and share it directly instead."
+            )
+        else:
+            sent = send_email(
+                to_address=recipient_email.strip(),
+                subject=f"{st.session_state.full_name}'s RemoteTech progress",
+                body=(
+                    f"Hi,\n\n{st.session_state.full_name} wanted to share their RemoteTech "
+                    f"learning progress with you.\n\nView it here (link expires in 30 days):\n"
+                    f"{st.session_state.progress_share_url}\n\n— RemoteTech"
+                ),
+            )
+            if sent:
+                st.success(f"Progress link emailed to {recipient_email.strip()}.")
+            else:
+                st.error("Couldn't send the email right now — please share the link above instead.")
 
 st.divider()
 

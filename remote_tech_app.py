@@ -21,7 +21,7 @@ from remotetech_data import (
     save_quest_time,
     get_leaderboard,
 )
-from branding import apply_branding, get_branding, text
+from branding import apply_branding, get_branding, DEFAULT_BRANDING
 from sandbox import safe_exec
 import quests_store
 import quest_engine
@@ -94,15 +94,21 @@ for key, val in defaults.items():
         st.session_state[key] = val
 
 # ====================== CSS ======================
+# Colors reference the --rt-primary / --rt-accent custom properties that
+# apply_branding() sets on :root above, with the original hardcoded values
+# kept as fallbacks (var(--x, fallback)) for an unbranded/default school.
+# Previously these were hardcoded hex codes, which silently overrode
+# apply_branding()'s per-school colors on every page load — this was the
+# reason white-labeling looked like it did nothing.
 st.markdown("""
 <style>
     .main {background-color: #0f172a; color: #e0f2fe;}
-    h1, h2, h3 {color: #22d3ee; font-family: 'Arial', cursive;}
-    .stButton>button {background-color: #22d3ee; color: #0f172a; font-size: 18px;
-                      font-weight: bold; border-radius: 20px;}
+    h1, h2, h3 {color: var(--rt-primary, #22d3ee); font-family: 'Arial', cursive;}
+    .stButton>button {background-color: var(--rt-primary, #22d3ee); color: #0f172a; font-size: 18px;
+                      font-weight: bold; border-radius: 20px; border-color: var(--rt-primary, #22d3ee);}
     .hint {background-color: #334155; padding: 12px; border-radius: 12px;
-           border-left: 5px solid #eab308;}
-    .certificate {background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+           border-left: 5px solid var(--rt-accent, #eab308);}
+    .certificate {background: linear-gradient(135deg, var(--rt-primary, #1e3a8a), var(--rt-accent, #3b82f6));
                   padding: 40px; border-radius: 20px; text-align: center; color: white;}
 </style>
 """, unsafe_allow_html=True)
@@ -151,13 +157,19 @@ def record_time_and_save(quest_id, points_to_add, badge=None):
     persist_progress()
 
 
-def generate_certificate_pdf(user_name, points, date_str):
+def generate_certificate_pdf(user_name, points, date_str, school_name="RemoteTech",
+                              primary_color="#1e3a8a", accent_color="#22d3ee"):
+    """primary_color/accent_color default to the certificate's original navy/cyan
+    scheme; callers pass the school's branding colors so a white-labeled
+    certificate actually matches the rest of that school's pages. school_name
+    replaces the certificate's previously hardcoded "Sterkspruit" reference,
+    which would have looked wrong on a certificate for any other school."""
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=landscape(A4))
     width, height = landscape(A4)
-    c.setFillColor(HexColor("#1e3a8a"))
+    c.setFillColor(HexColor(primary_color))
     c.rect(0, 0, width, height, fill=1)
-    c.setStrokeColor(HexColor("#22d3ee"))
+    c.setStrokeColor(HexColor(accent_color))
     c.setLineWidth(4)
     c.rect(30, 30, width - 60, height - 60)
     c.setFillColor(HexColor("#e0f2fe"))
@@ -171,7 +183,7 @@ def generate_certificate_pdf(user_name, points, date_str):
     c.drawCentredString(width / 2, height - 260, user_name)
     c.setFont("Helvetica-Oblique", 13)
     c.drawCentredString(width / 2, height - 300,
-                        "has successfully completed the Sterkspruit Python Coding Adventure")
+                        f"has successfully completed the {school_name} Python Coding Adventure")
     c.setFont("Helvetica", 12)
     c.drawCentredString(width / 2, height - 340,
                         f"Date: {date_str}    |    Total Points: {points}")
@@ -199,21 +211,13 @@ CORE_QUEST_IDS = [q["id"] for q in QUESTS if q.get("quest_set", CORE_QUEST_SET) 
 # ====================== SIDEBAR ======================
 st.sidebar.markdown(f"## {st.session_state.avatar} {st.session_state.user_name}")
 st.sidebar.caption(branding["school_name"])
-language_options = {"English": "en", "isiXhosa": "xh", "Afrikaans": "af"}
-selected_language = st.sidebar.selectbox(
-    text("language"), list(language_options),
-    index=list(language_options.values()).index(st.session_state.get("language", "en")),
-)
-if language_options[selected_language] != st.session_state.get("language", "en"):
-    st.session_state.language = language_options[selected_language]
-    st.rerun()
 st.sidebar.markdown("## 🎮 Menu")
 page = st.sidebar.radio("Choose your adventure:", [
-    f"🏠 {text('home')}",
-    f"📚 {text('quests')}",
+    "🏠 Home Base",
+    "📚 Learning Quests",
     "🛒 Spaza Shop Project",
     "🧪 Magic Code Lab",
-    f"🏆 {text('leaderboard')}",
+    "🏆 Hero Leaderboard",
     "📊 Village Impact",
 ])
 
@@ -240,7 +244,7 @@ if st.session_state.get("is_demo"):
     )
 
 # ====================== HOME ======================
-if page == f"🏠 {text('home')}":
+if page == "🏠 Home Base":
     st.title(f"🚀 {branding['school_name']} Adventure")
     st.markdown("### *Sterkspruit Heroes – Learn Python & Build Your Future!* 🌟")
     st.markdown(f"## Welcome back, *{st.session_state.full_name}*! 👋 You're a superstar! 🔥")
@@ -268,7 +272,7 @@ if page == f"🏠 {text('home')}":
             st.rerun()
 
 # ====================== LEARNING QUESTS ======================
-elif page == f"📚 {text('quests')}":
+elif page == "📚 Learning Quests":
     st.header("🌟 Your Learning Quests")
 
     # Quest selection grid
@@ -368,7 +372,7 @@ elif page == "🧪 Magic Code Lab":
             st.success("✅ Ran successfully!")
 
 # ====================== LEADERBOARD ======================
-elif page == f"🏆 {text('leaderboard')}":
+elif page == "🏆 Hero Leaderboard":
     st.header("🏆 Hero Leaderboard")
     user_class = st.session_state.get("class_name")
     if user_class:
@@ -405,7 +409,7 @@ if st.session_state.get("show_certificate") or core_done_count >= len(CORE_QUEST
     st.markdown("### RemoteTech Python Mastery Program")
     st.markdown("*This certifies that*")
     st.markdown(f"## {st.session_state.full_name}")
-    st.markdown("*has successfully completed the Sterkspruit Python Coding Adventure*")
+    st.markdown(f"*has successfully completed the {branding['school_name']} Python Coding Adventure*")
     st.markdown(f"**Date:** {datetime.now().strftime('%d %B %Y')}")
     st.markdown(f"**Total Points:** {st.session_state.points} 🔥")
     st.markdown("*Well done, Future Tech Leader!* 🌍")
@@ -415,6 +419,9 @@ if st.session_state.get("show_certificate") or core_done_count >= len(CORE_QUEST
         st.session_state.full_name,
         st.session_state.points,
         datetime.now().strftime("%d %B %Y"),
+        school_name=branding["school_name"],
+        primary_color=branding["primary_color"],
+        accent_color=branding["accent_color"],
     )
     st.download_button(
         label="📄 Download Certificate (PDF)",
@@ -423,4 +430,11 @@ if st.session_state.get("show_certificate") or core_done_count >= len(CORE_QUEST
         mime="application/pdf",
     )
 
-st.caption("RemoteTech ©️ 2026 • Sterkspruit Pilot • Eastern Cape")
+# Only unbranded (default) schools see the pilot-specific footer — a
+# school with its own branding gets a generic footer instead, since
+# "Sterkspruit Pilot • Eastern Cape" was previously shown to every
+# school's students regardless of who they actually were.
+if branding["school_name"] and branding["school_name"] != DEFAULT_BRANDING["school_name"]:
+    st.caption(f"{branding['school_name']} • powered by RemoteTech")
+else:
+    st.caption("RemoteTech ©️ 2026 • Sterkspruit Pilot • Eastern Cape")

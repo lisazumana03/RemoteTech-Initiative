@@ -64,7 +64,7 @@ and there's a way to actually collect payment.
 
 - [ ] Simple white-label option (logo/color swap per school)
 - [ ] Parent/teacher progress email or shareable progress link
-- [ ] isiXhosa/Afrikaans language toggle for at least the core UI strings
+- [x] ~~isiXhosa/Afrikaans language toggle for at least the core UI strings~~ (dropped — out of scope, removed from codebase)
 - [ ] One-page marketing/landing site separate from the app
 - [ ] Full run-through as a brand-new user: register → quests → certificate →
       profile → delete account, fixing anything broken along the way

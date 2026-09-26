@@ -32,7 +32,7 @@ with col1:
 with col2:
     st.markdown("<div class='feature'><b>Teacher visibility</b><br>Class-scoped progress, completion, and activity reports.</div>", unsafe_allow_html=True)
 with col3:
-    st.markdown("<div class='feature'><b>Ready for schools</b><br>POP​​IA-aware accounts, safe execution, and white-label settings.</div>", unsafe_allow_html=True)
+    st.markdown("<div class='feature'><b>Ready for schools</b><br>POPIA-aware accounts, safe execution, and white-label settings.</div>", unsafe_allow_html=True)
 
 st.divider()
 col_start, col_demo = st.columns(2)

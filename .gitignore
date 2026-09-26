@@ -1,0 +1,28 @@
+# Python bytecode / cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE / tooling
+.idea/
+.junie/
+*.iml
+
+# Local database (never commit real or test user data)
+remotetech.db
+*.db
+*.sqlite
+*.sqlite3
+
+# Secrets / environment
+.env
+.env.*
+
+# OS junk
+.DS_Store
+Thumbs.db

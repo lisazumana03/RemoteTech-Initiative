@@ -44,12 +44,11 @@ with brand_col1:
     primary_color = st.color_picker("Primary color", current_branding["primary_color"])
 with brand_col2:
     accent_color = st.color_picker("Accent color", current_branding["accent_color"])
-    language = st.selectbox("Default language", ["en", "xh", "af"], index=["en", "xh", "af"].index(current_branding["language"]))
 if st.button("Save Branding", type="primary"):
     if not st.session_state.get("school"):
         st.error("Your admin account is not linked to a school.")
     else:
-        save_branding(st.session_state.school, logo_url, primary_color, accent_color, language)
+        save_branding(st.session_state.school, logo_url, primary_color, accent_color)
         st.success("Branding saved. Learners will see it on their next page load.")
 
 st.divider()
