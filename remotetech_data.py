@@ -93,6 +93,15 @@ def init_db():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS progress_shares (
+            token_hash TEXT PRIMARY KEY,
+            username TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP
+        )
+    """)
+
     # ---- Migrations for installs created before these columns existed ----
     _ensure_column(cursor, "users", "school", "TEXT DEFAULT ''")
     _ensure_column(cursor, "users", "class_name", "TEXT DEFAULT ''")
@@ -407,8 +416,15 @@ def get_inactive_students(days=7, class_name=None):
     return rows
 
 
-def get_quest_completion_stats(class_name=None):
-    """How many students completed each quest, optionally scoped to a class."""
+def get_quest_completion_stats(class_name=None, quest_ids=None):
+    """How many students completed each quest, optionally scoped to a class.
+
+    quest_ids: pass the current list of quest ids (e.g. from
+    quests_store.get_all_quests()) so the stats cover however many quests
+    exist today — the content library can grow without this function
+    needing a code change. Falls back to whatever ids show up in the data
+    if not provided, so old callers keep working.
+    """
     conn = _connect()
     cur = conn.cursor()
     if class_name:
@@ -428,11 +444,19 @@ def get_quest_completion_stats(class_name=None):
     rows = cur.fetchall()
     conn.close()
 
-    quest_counts = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0}
+    if quest_ids is not None:
+        quest_counts = {qid: 0 for qid in quest_ids}
+        for (lessons_json,) in rows:
+            for lesson in json.loads(lessons_json):
+                if lesson in quest_counts:
+                    quest_counts[lesson] += 1
+        return quest_counts
+
+    # No quest_ids given — build the dict from whatever appears in the data.
+    quest_counts = {}
     for (lessons_json,) in rows:
         for lesson in json.loads(lessons_json):
-            if lesson in quest_counts:
-                quest_counts[lesson] += 1
+            quest_counts[lesson] = quest_counts.get(lesson, 0) + 1
     return quest_counts
 
 def delete_user_data(username):
@@ -443,8 +467,55 @@ def delete_user_data(username):
     cur.execute(adapt("DELETE FROM progress WHERE username=?"), (username,))
     cur.execute(adapt("DELETE FROM quest_times WHERE username=?"), (username,))
     cur.execute(adapt("DELETE FROM password_resets WHERE username=?"), (username,))
+    cur.execute(adapt("DELETE FROM progress_shares WHERE username=?"), (username,))
     conn.commit()
     conn.close()
+
+
+def create_progress_share(username, days=30):
+    """Create a revocable, read-only token for a student's progress summary."""
+    token = secrets.token_urlsafe(32)
+    token_hash = _hash_token(token)
+    expires_at = datetime.utcnow() + timedelta(days=days)
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(adapt("""
+        INSERT INTO progress_shares (token_hash, username, expires_at)
+        VALUES (?, ?, ?)
+    """), (token_hash, username, expires_at))
+    conn.commit()
+    conn.close()
+    return token
+
+
+def get_shared_progress(token):
+    """Return a minimal progress summary for a valid share token."""
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(adapt("""
+        SELECT u.full_name, u.school, u.class_name, p.points, p.badges,
+               p.completed_lessons, s.expires_at
+        FROM progress_shares s
+        JOIN users u ON u.username = s.username
+        LEFT JOIN progress p ON p.username = s.username
+        WHERE s.token_hash = ?
+    """), (_hash_token(token),))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    full_name, school, class_name, points, badges, lessons, expires_at = row
+    if expires_at and datetime.fromisoformat(str(expires_at)) < datetime.utcnow():
+        return None
+    return {
+        "full_name": full_name,
+        "school": school or "",
+        "class_name": class_name or "",
+        "points": points or 0,
+        "badges": _parse_json_list(badges),
+        "completed_lessons": _parse_json_list(lessons),
+        "expires_at": expires_at,
+    }
 
 
 # =============================================================================

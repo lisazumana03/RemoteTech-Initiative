@@ -1,0 +1,347 @@
+[
+  {
+    "id": "1",
+    "sort_order": 1,
+    "quest_set": "foundations",
+    "icon": "🛒",
+    "title": "Spaza Shop Variables",
+    "description": "Create variables for three items and calculate the total stock value.",
+    "points": 150,
+    "run_button_label": "Run ✨",
+    "starter_code": "bread = 15\nmilk = 18\nchips = 12\ntotal = bread + milk + chips\nprint(\"Total: R\" + str(total))",
+    "success_message": "🎉 Perfect! +150 points",
+    "checks": [
+      {
+        "type": "has_var",
+        "var": "total",
+        "hints": [
+          "You need to store three numbers — what Python keyword creates a named value?",
+          "Try: bread = 15 — now do the same for milk and chips.",
+          "Add them: total = bread + milk + chips, then print('Total: R' + str(total))"
+        ]
+      },
+      {
+        "type": "var_type",
+        "var": "total",
+        "types": ["int", "float"],
+        "message": "💡 `total` should be a number — try adding your variables together."
+      },
+      {
+        "type": "output_nonempty",
+        "message": "💡 Your code runs but prints nothing — add a print() statement."
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "sort_order": 2,
+    "quest_set": "foundations",
+    "icon": "🚕",
+    "title": "Taxi Fare Calculator",
+    "description": "Calculate taxi fare based on distance and rate per km.",
+    "points": 150,
+    "run_button_label": "Calculate Fare ✨",
+    "starter_code": "distance = 10\nrate = 5\nfare = distance * rate\nprint(\"Fare: R\" + str(fare))",
+    "success_message": "🎉 Great work! +150 points",
+    "checks": [
+      {
+        "type": "has_var",
+        "var": "fare",
+        "hints": [
+          "You need a variable called `fare` — what calculation gives you the fare?",
+          "Fare = distance × rate. Try: fare = distance * rate",
+          "Now print it: print('Fare: R' + str(fare))"
+        ]
+      },
+      {
+        "type": "var_equals_expr",
+        "var": "fare",
+        "expr": "distance * rate",
+        "message": "💡 `fare` should equal `distance × rate`. Check your formula."
+      },
+      {
+        "type": "output_contains_var",
+        "var": "fare",
+        "message": "💡 Print the fare!"
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "sort_order": 3,
+    "quest_set": "foundations",
+    "icon": "🌧️",
+    "title": "Rainy Day Decisions",
+    "description": "Use if-elif-else to decide what to do based on the weather.",
+    "points": 150,
+    "run_button_label": "Decide ✨",
+    "starter_code": "weather = \"rainy\"\nif weather == \"sunny\":\n    print(\"Go outside and play!\")\nelif weather == \"rainy\":\n    print(\"Stay inside and read a book!\")\nelse:\n    print(\"Check the weather again!\")",
+    "success_message": "🎉 Excellent! +150 points",
+    "checks": [
+      {
+        "type": "has_var",
+        "var": "weather",
+        "hints": [
+          "Start by creating a variable: weather = 'rainy'",
+          "Use `if` to check one condition, `elif` for another.",
+          "if weather == 'sunny': ... elif weather == 'rainy': ... else: ..."
+        ]
+      },
+      {
+        "type": "code_contains",
+        "tokens": ["if", "elif"],
+        "message": "💡 You need both an `if` and an `elif` block."
+      },
+      {
+        "type": "output_nonempty",
+        "message": "💡 Your code runs but prints nothing — add print() inside each block."
+      },
+      {
+        "type": "conditional_output_contains",
+        "when_var": "weather",
+        "when_equals": "rainy",
+        "any_of": ["inside", "book"],
+        "message": "💡 When weather is 'rainy' suggest staying inside."
+      }
+    ]
+  },
+  {
+    "id": "4",
+    "sort_order": 4,
+    "quest_set": "foundations",
+    "icon": "📦",
+    "title": "Spaza Restocking Loops",
+    "description": "Use a for loop to print a restocking message for every item.",
+    "points": 150,
+    "run_button_label": "Restock ✨",
+    "starter_code": "items = [\"Bread\", \"Milk\", \"Chips\"]\nfor item in items:\n    print(\"Restocking \" + item)",
+    "success_message": "🎉 Well done! +150 points",
+    "checks": [
+      {
+        "type": "var_type",
+        "var": "items",
+        "types": ["list"],
+        "hints": [
+          "Create a list called `items` with some product names.",
+          "Use: items = ['Bread', 'Milk', 'Chips']",
+          "Then loop: for item in items:  print('Restocking ' + item)"
+        ]
+      },
+      {
+        "type": "code_contains",
+        "tokens": ["for"],
+        "message": "💡 You need a `for` loop to go through each item."
+      },
+      {
+        "type": "output_line_count_at_least",
+        "based_on_var": "items",
+        "message": "💡 Your loop should print one line per item."
+      }
+    ]
+  },
+  {
+    "id": "5",
+    "sort_order": 5,
+    "quest_set": "foundations",
+    "icon": "🦸",
+    "title": "Super Functions",
+    "description": "Define a function called `calculate_total` that takes a list of prices and returns their sum.",
+    "points": 150,
+    "run_button_label": "Calculate Total ✨",
+    "starter_code": "def calculate_total(prices):\n    total = sum(prices)\n    return total\n\nprices = [15, 18, 12]\ntotal_price = calculate_total(prices)\nprint(\"Total Price: R\" + str(total_price))",
+    "success_message": "🎉 Fantastic! +150 points",
+    "checks": [
+      {
+        "type": "code_contains",
+        "tokens": ["def "],
+        "hints": [
+          "You need to define a function — start with `def`.",
+          "def calculate_total(prices):  — now add the body.",
+          "Inside the function: total = sum(prices)  then  return total"
+        ]
+      },
+      {
+        "type": "var_type",
+        "var": "calculate_total",
+        "types": ["callable"],
+        "message": "💡 Name your function exactly `calculate_total`."
+      },
+      {
+        "type": "function_returns",
+        "var": "calculate_total",
+        "args": [[10, 20, 30]],
+        "expected": 60,
+        "message": "💡 Check your sum() logic."
+      }
+    ]
+  },
+  {
+    "id": "6",
+    "sort_order": 6,
+    "quest_set": "foundations",
+    "icon": "✨",
+    "title": "Super Spaza List Magic",
+    "description": "Use list comprehensions to raise all prices by R3, and filter prices above R20.",
+    "points": 280,
+    "run_button_label": "✨ Cast Magic!",
+    "starter_code": "prices = [12, 18, 25, 8, 30]\nnew_prices = [p + 3 for p in prices]\nexpensive = [p for p in prices if p > 20]\nprint(new_prices)\nprint(expensive)",
+    "success_message": "🎉 Masterful! +280 points",
+    "checks": [
+      {
+        "type": "has_var",
+        "var": "new_prices",
+        "hints": [
+          "You need two lists: `new_prices` and `expensive`.",
+          "Use a list comprehension: [p + 3 for p in prices]",
+          "Filter expensive ones: [p for p in prices if p > 20]"
+        ]
+      },
+      {
+        "type": "has_var",
+        "var": "expensive",
+        "hints": [
+          "You need two lists: `new_prices` and `expensive`.",
+          "Use a list comprehension: [p + 3 for p in prices]",
+          "Filter expensive ones: [p for p in prices if p > 20]"
+        ]
+      },
+      {
+        "type": "var_type",
+        "var": "new_prices",
+        "types": ["list"],
+        "message": "💡 `new_prices` should be a list — use a list comprehension."
+      },
+      {
+        "type": "var_equals_expr",
+        "var": "new_prices",
+        "expr": "[p + 3 for p in prices]",
+        "message": "💡 `new_prices` should add 3 to every price."
+      },
+      {
+        "type": "var_equals_expr",
+        "var": "expensive",
+        "expr": "[p for p in prices if p > 20]",
+        "message": "💡 `expensive` should only include prices above 20."
+      }
+    ]
+  },
+  {
+    "id": "7",
+    "sort_order": 7,
+    "quest_set": "dictionaries",
+    "icon": "📒",
+    "title": "Spaza Inventory Dictionary",
+    "description": "Store each item with its price in a dictionary, then work out the total value of the stock.",
+    "points": 180,
+    "run_button_label": "Tally Stock ✨",
+    "starter_code": "inventory = {\"Bread\": 15, \"Milk\": 18, \"Chips\": 12}\ntotal_value = sum(inventory.values())\nprint(\"Total value: R\" + str(total_value))",
+    "success_message": "🎉 Nicely stocked! +180 points",
+    "checks": [
+      {
+        "type": "var_type",
+        "var": "inventory",
+        "types": ["dict"],
+        "hints": [
+          "A dictionary maps a name to a value, like {'Bread': 15}.",
+          "Try: inventory = {'Bread': 15, 'Milk': 18, 'Chips': 12}",
+          "Use inventory.values() to get just the prices."
+        ]
+      },
+      {
+        "type": "has_var",
+        "var": "total_value",
+        "hints": [
+          "You need a variable called `total_value`.",
+          "Add up the prices with sum(inventory.values())",
+          "total_value = sum(inventory.values())"
+        ]
+      },
+      {
+        "type": "var_equals_expr",
+        "var": "total_value",
+        "expr": "sum(inventory.values())",
+        "message": "💡 `total_value` should be the sum of every price in `inventory`."
+      },
+      {
+        "type": "output_contains_var",
+        "var": "total_value",
+        "message": "💡 Print the total value!"
+      }
+    ]
+  },
+  {
+    "id": "8",
+    "sort_order": 8,
+    "quest_set": "mini_projects",
+    "icon": "📊",
+    "title": "Mini Project: Class Grade Book",
+    "description": "Write a function that works out the class average from a dictionary of learner names and marks.",
+    "points": 220,
+    "run_button_label": "Work Out Average ✨",
+    "starter_code": "grades = {\"Thabo\": 78, \"Naledi\": 85, \"Sipho\": 62}\n\ndef class_average(grades):\n    return sum(grades.values()) / len(grades)\n\naverage = class_average(grades)\nprint(\"Class average: \" + str(round(average, 1)))",
+    "success_message": "🎉 Top marks! +220 points",
+    "checks": [
+      {
+        "type": "code_contains",
+        "tokens": ["def "],
+        "hints": [
+          "Define a function: def class_average(grades):",
+          "Inside it, add up the marks and divide by how many there are.",
+          "return sum(grades.values()) / len(grades)"
+        ]
+      },
+      {
+        "type": "var_type",
+        "var": "class_average",
+        "types": ["callable"],
+        "message": "💡 Name your function exactly `class_average`."
+      },
+      {
+        "type": "function_returns",
+        "var": "class_average",
+        "args": [{"A": 50, "B": 100}],
+        "expected": 75,
+        "message": "💡 For {'A': 50, 'B': 100} the average should be 75. Check sum()/len()."
+      }
+    ]
+  },
+  {
+    "id": "9",
+    "sort_order": 9,
+    "quest_set": "mini_projects",
+    "icon": "📇",
+    "title": "Mini Project: Contact Directory",
+    "description": "Write a function that searches a list of contacts (each a dictionary) and returns the number for a given name.",
+    "points": 220,
+    "run_button_label": "Look Up Contact ✨",
+    "starter_code": "contacts = [\n    {\"name\": \"Thabo\", \"number\": \"082 000 0001\"},\n    {\"name\": \"Naledi\", \"number\": \"082 000 0002\"},\n]\n\ndef find_number(contacts, name):\n    for contact in contacts:\n        if contact[\"name\"] == name:\n            return contact[\"number\"]\n    return \"Not found\"\n\nprint(find_number(contacts, \"Naledi\"))",
+    "success_message": "🎉 Contact found! +220 points",
+    "checks": [
+      {
+        "type": "code_contains",
+        "tokens": ["def "],
+        "hints": [
+          "Define a function: def find_number(contacts, name):",
+          "Loop through `contacts` and check each contact['name'].",
+          "When it matches, return contact['number']; otherwise keep looping."
+        ]
+      },
+      {
+        "type": "var_type",
+        "var": "find_number",
+        "types": ["callable"],
+        "message": "💡 Name your function exactly `find_number`."
+      },
+      {
+        "type": "function_returns",
+        "var": "find_number",
+        "args": [
+          [{"name": "A", "number": "111"}, {"name": "B", "number": "222"}],
+          "B"
+        ],
+        "expected": "222",
+        "message": "💡 find_number(contacts, 'B') should return contact B's number."
+      }
+    ]
+  }
+]
