@@ -1,5 +1,6 @@
 import streamlit as st
 from remotetech_data import init_db, login_user, load_user_progress, get_or_create_demo_account
+from i18n import t
 
 init_db()
 
@@ -18,9 +19,9 @@ if "full_name" not in st.session_state:
 if "avatar" not in st.session_state:
     st.session_state.avatar = "🚀"
 
-st.title("🚀 RemoteTech — Login")
+st.title(t("login_title"))
 
-if st.button("About RemoteTech"):
+if st.button(t("about_button")):
     st.switch_page("landing.py")
 
 
