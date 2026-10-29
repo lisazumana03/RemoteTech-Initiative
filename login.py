@@ -58,14 +58,14 @@ def _start_session(user, is_demo=False):
         st.session_state.completed_lessons = set()
 
 
-username = st.text_input("Username")
-password = st.text_input("Password", type="password")
+username = st.text_input(t("username_label"))
+password = st.text_input(t("password_label"), type="password")
 
 col_login, col_forgot = st.columns([1, 1])
 with col_login:
-    login_clicked = st.button("Login", type="primary")
+    login_clicked = st.button(t("login_button"), type="primary")
 with col_forgot:
-    if st.button("Forgot password?"):
+    if st.button(t("forgot_password_button")):
         st.switch_page("forgot_password.py")
 
 if login_clicked:
@@ -82,7 +82,7 @@ if login_clicked:
 st.divider()
 st.markdown("### 🎮 Just want to look around first?")
 st.caption("Try every quest with no signup — progress won't be saved.")
-if st.button("🎮 Try the Demo (no signup needed)"):
+if st.button(t("try_demo_button")):
     demo_user = get_or_create_demo_account()
     _start_session(demo_user, is_demo=True)
     st.success("Welcome to the RemoteTech demo!")
