@@ -3,10 +3,6 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
-from i18n import language_selector
-
-language_selector()
-
 pages = [
     st.Page("landing.py", title="About RemoteTech", url_path="about"),
     st.Page("login.py", title="Login", default=True),

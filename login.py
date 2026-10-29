@@ -1,6 +1,5 @@
 import streamlit as st
 from remotetech_data import init_db, login_user, load_user_progress, get_or_create_demo_account
-from i18n import t
 
 init_db()
 
@@ -19,9 +18,9 @@ if "full_name" not in st.session_state:
 if "avatar" not in st.session_state:
     st.session_state.avatar = "🚀"
 
-st.title(t("login_title"))
+st.title(("Login"))
 
-if st.button(t("about_button")):
+if st.button(("About")):
     st.switch_page("landing.py")
 
 
@@ -58,14 +57,14 @@ def _start_session(user, is_demo=False):
         st.session_state.completed_lessons = set()
 
 
-username = st.text_input(t("username_label"))
-password = st.text_input(t("password_label"), type="password")
+username = st.text_input(("Username"))
+password = st.text_input(("Password"), type="password")
 
 col_login, col_forgot = st.columns([1, 1])
 with col_login:
-    login_clicked = st.button(t("login_button"), type="primary")
+    login_clicked = st.button(("Login"), type="primary")
 with col_forgot:
-    if st.button(t("forgot_password_button")):
+    if st.button(("Forgot password")):
         st.switch_page("forgot_password.py")
 
 if login_clicked:
@@ -82,7 +81,7 @@ if login_clicked:
 st.divider()
 st.markdown("### 🎮 Just want to look around first?")
 st.caption("Try every quest with no signup — progress won't be saved.")
-if st.button(t("try_demo_button")):
+if st.button(("Try Demo")):
     demo_user = get_or_create_demo_account()
     _start_session(demo_user, is_demo=True)
     st.success("Welcome to the RemoteTech demo!")

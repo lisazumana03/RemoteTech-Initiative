@@ -1,7 +1,0 @@
-streamlit
-bcrypt
-pandas
-plotly
-reportlab
-stripe
-psycopg2-binary
