@@ -1,8 +1,6 @@
 import streamlit as st
 from remotetech_data import init_db, register_user, create_email_verification_token, EMAIL_VERIFICATION_TTL_HOURS
 from email_utils import send_email, is_configured
-import os, create_email_verification_token, EMAIL_VERIFICATION_TTL_HOURS
-from email_utils import send_email, is_configured
 import os
 
 init_db()
