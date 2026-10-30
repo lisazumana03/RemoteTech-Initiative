@@ -15,6 +15,7 @@ pages = [
     st.Page("share.py", title="Shared Progress", url_path="share"),
     st.Page("remote_tech_app.py", title="Main App"),
     st.Page("profile.py", title="User Profile"),
+    st.Page("feedback.py", title="Application Feedback", url_path="feedback"),
 ]
 
 if st.session_state.get("role") == "admin":

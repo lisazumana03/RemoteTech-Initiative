@@ -107,6 +107,23 @@ def init_db():
     _ensure_column(cursor, "users", "class_name", "TEXT DEFAULT ''")
     _ensure_column(cursor, "users", "is_demo", "INTEGER DEFAULT 0")
 
+    # Application reviews submitted by registered RemoteTech users.
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS application_feedback (
+            id {autoincrement_pk()},
+            username TEXT NOT NULL,
+            application_name TEXT NOT NULL,
+            rating INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+            category TEXT NOT NULL,
+            review TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'Open'
+                CHECK (status IN ('Open', 'Under Review', 'Resolved', 'Closed')),
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (username) REFERENCES users(username),
+            UNIQUE (username, application_name)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -670,3 +687,131 @@ def get_or_create_demo_account():
         'class_name': class_name or "",
         'is_demo': True,
     }
+
+
+# ====================== APPLICATION FEEDBACK ======================
+
+FEEDBACK_STATUSES = ("Open", "Under Review", "Resolved", "Closed")
+FEEDBACK_CATEGORIES = (
+    "General Feedback",
+    "Bug or Technical Problem",
+    "User Interface and Design",
+    "Performance",
+    "Feature Request",
+)
+
+
+def save_application_feedback(username, application_name, rating, category, review):
+    """Create or update a registered user's one review per application."""
+    if not isinstance(username, str) or not username.strip():
+        raise ValueError("You must be logged in to submit feedback.")
+
+    application_name = application_name.strip() if isinstance(application_name, str) else ""
+    category = category.strip() if isinstance(category, str) else ""
+    review = review.strip() if isinstance(review, str) else ""
+
+    if not application_name:
+        raise ValueError("Please select an application.")
+    if isinstance(rating, bool) or not isinstance(rating, int) or not 1 <= rating <= 5:
+        raise ValueError("Rating must be between 1 and 5.")
+    if category not in FEEDBACK_CATEGORIES:
+        raise ValueError("Please select a valid feedback category.")
+    if not review:
+        raise ValueError("Please enter your feedback.")
+    if len(review) > 2000:
+        raise ValueError("Feedback cannot exceed 2000 characters.")
+
+    conn = _connect()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            adapt("SELECT username, is_demo FROM users WHERE username = ?"),
+            (username.strip(),),
+        )
+        user = cursor.fetchone()
+        if not user or bool(user[1]) or username.strip() == DEMO_USERNAME:
+            raise ValueError("Only registered, non-demo users can submit feedback.")
+
+        cursor.execute(
+            adapt("""
+                INSERT INTO application_feedback
+                    (username, application_name, rating, category, review)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT (username, application_name) DO UPDATE SET
+                    rating = excluded.rating,
+                    category = excluded.category,
+                    review = excluded.review,
+                    status = 'Open',
+                    created_at = CURRENT_TIMESTAMP
+            """),
+            (username.strip(), application_name, rating, category, review),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def get_user_application_feedback(username):
+    """Return only the feedback owned by the given registered username."""
+    if not username:
+        return []
+    conn = _connect()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(adapt("""
+            SELECT id, application_name, rating, category, review, status, created_at
+            FROM application_feedback
+            WHERE username = ?
+            ORDER BY created_at DESC, id DESC
+        """), (username,))
+        columns = ("id", "application_name", "rating", "category", "review", "status", "created_at")
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_all_application_feedback(application_name=None, status=None):
+    """Return feedback for use by the authorised staff dashboard."""
+    conn = _connect()
+    try:
+        cursor = conn.cursor()
+        query = """
+            SELECT id, username, application_name, rating, category, review, status, created_at
+            FROM application_feedback WHERE 1 = 1
+        """
+        params = []
+        if application_name:
+            query += " AND application_name = ?"
+            params.append(application_name)
+        if status:
+            query += " AND status = ?"
+            params.append(status)
+        query += " ORDER BY created_at DESC, id DESC"
+        cursor.execute(adapt(query), tuple(params))
+        columns = ("id", "username", "application_name", "rating", "category", "review", "status", "created_at")
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def update_application_feedback_status(feedback_id, status):
+    """Update status; the Streamlit page must verify staff role first."""
+    if status not in FEEDBACK_STATUSES:
+        raise ValueError("Invalid feedback status.")
+    conn = _connect()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(adapt("""
+            UPDATE application_feedback SET status = ? WHERE id = ?
+        """), (status, feedback_id))
+        if cursor.rowcount == 0:
+            raise ValueError("Feedback entry was not found.")
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
