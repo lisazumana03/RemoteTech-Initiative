@@ -1,5 +1,9 @@
 import streamlit as st
-from remotetech_data import init_db, register_user
+from remotetech_data import init_db, register_user, create_email_verification_token, EMAIL_VERIFICATION_TTL_HOURS
+from email_utils import send_email, is_configured
+import os, create_email_verification_token, EMAIL_VERIFICATION_TTL_HOURS
+from email_utils import send_email, is_configured
+import os
 
 init_db()
 
@@ -31,28 +35,21 @@ st.divider()
 #===================== POPIA NOTICE ======================
 with st.expander("📄 Privacy Notice (POPIA) — please read before registering"):
     st.markdown("""
-**RemoteTech collects the following personal information:**
+**Information collected:** your name, username, email address, optional school/class code, and learning activity such as points, badges, and completed quests.
 
-- Full Name - for identification purposes
-- Username - account login and display
-- Email - for account management and communication
-- Learning progress (points, badges, completed quests) - to track your journey
-                
-**How we use your data:**
-- Your progress is shown to you and to your teacher/admin so they can support you.
-- Your first name may appear on the class leaderboard.
-- We do not sell, share, or use your data for advertising.
-                
-**Your rights under POPIA (Protection of Personal Information Act, 2013):**
-- You may request to view all data we hold about you at any time.
-- You may request deletion of your account and all associated data from your Profile page.
-- You may contact the system administrator to raise a data concern.
+**Why it is used:** to create and secure your account, save learning progress, and let authorised school staff support your learning. Your display name may appear on a class leaderboard, depending on the feature and school setup.
 
-By registering, you consent to the collection and use of this information in accordance with our Privacy Policy.
+**Email verification:** new accounts must verify the email address before logging in. Verification links expire after 24 hours.
+
+**Sharing and providers:** RemoteTech does not sell learner data or use it for advertising. Hosting, email, and payment providers may process information needed to operate the service; the current providers and regions must be listed in the published Privacy Policy.
+
+**Your rights:** you may request access to, correction of, or deletion of your information through the school's authorised contact or the RemoteTech privacy contact listed in the published policy. Deletion may be subject to applicable legal retention obligations and backup schedules.
+
+Read `DATA_POLICY.md` / the published Privacy Policy for full details. This notice is not a substitute for the appropriate lawful basis and authorisations required for children's information under POPIA.
 """)
     
 popia_consent = st.checkbox(
-    "✅ I have read the Privacy Notice and consent to my personal information being processed as described."
+    "✅ I have read the Privacy Notice and acknowledge how my information is used."
 )
 terms_accepted = st.checkbox("I agree to the Terms and Conditions")
 
@@ -64,7 +61,7 @@ if st.button("Register", type="primary"):
     elif len(password) < 8:
         st.error("Password must be at least 8 characters.")
     elif not popia_consent:
-        st.error("You must consent to the Privacy Notice to register.")
+        st.error("Please acknowledge the Privacy Notice before registering.")
     elif not terms_accepted:
         st.error("Please agree to the Terms and Conditions.")
     else:
@@ -76,13 +73,21 @@ if st.button("Register", type="primary"):
             avatar=avatar,  
             popia_consent=True,
             class_name=class_name.strip(),
+            email_verified=False,
         )
         if success:
-            # Pre-load session so full name is available immediately on login
-            st.session_state.registered_username = username
-            st.session_state.registered_full_name = full_name
-            st.success(f"🎉 Welcome, {full_name}! Your account has been created.")
-            st.info("You can now login below.")
+            base_url = os.environ.get("APP_BASE_URL", "").rstrip("/")
+            token = create_email_verification_token(username.strip(), email.strip())
+            verify_link = f"{base_url}/verify_email?token={token}" if base_url and token else ""
+            sent = bool(token and verify_link and is_configured() and send_email(
+                email.strip(), "Verify your RemoteTech email address",
+                f"Hi {full_name},\n\nPlease verify your email address to activate your RemoteTech account.\n\n"
+                f"Open this link within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verify_link}\n\n"
+                "If you did not create this account, you can ignore this email."
+            ))
+            st.success("Account created. Check your email for a verification link before logging in.")
+            if not sent:
+                st.warning("Verification email could not be sent. Please contact the school/application administrator to configure email delivery or request a new verification email. For safety, the verification link is not displayed here.")
         else:
             st.error("That username or email is already registered.")
 

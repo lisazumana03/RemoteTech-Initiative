@@ -9,6 +9,7 @@ from db import get_connection, adapt, autoincrement_pk, upsert_clause, USE_POSTG
 
 # How long a password-reset token stays valid.
 RESET_TOKEN_TTL_MINUTES = 30
+EMAIL_VERIFICATION_TTL_HOURS = 24
 
 # The fixed account used for the "Try the Demo" flow. Progress made while
 # logged in as this account is never persisted (see is_demo handling in
@@ -94,6 +95,15 @@ def init_db():
     """)
 
     cursor.execute("""
+        CREATE TABLE IF NOT EXISTS email_verifications (
+            username TEXT NOT NULL,
+            token_hash TEXT NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            used INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS progress_shares (
             token_hash TEXT PRIMARY KEY,
             username TEXT NOT NULL,
@@ -106,6 +116,10 @@ def init_db():
     _ensure_column(cursor, "users", "school", "TEXT DEFAULT ''")
     _ensure_column(cursor, "users", "class_name", "TEXT DEFAULT ''")
     _ensure_column(cursor, "users", "is_demo", "INTEGER DEFAULT 0")
+    # Existing accounts are grandfathered as verified so this migration does not
+    # unexpectedly lock out current users. All new public registrations explicitly
+    # set email_verified=False and must complete verification before login.
+    _ensure_column(cursor, "users", "email_verified", "INTEGER NOT NULL DEFAULT 1")
 
     # Application reviews submitted by registered RemoteTech users.
     cursor.execute(f"""
@@ -138,7 +152,8 @@ def _parse_json_list(value):
         return []
 
 def register_user(full_name, username, email, password, avatar, role="student",
-                   popia_consent=False, school="", class_name="", is_demo=False):
+                   popia_consent=False, school="", class_name="", is_demo=False,
+                   email_verified=True):
     conn = _connect()
     cursor = conn.cursor()
 
@@ -147,11 +162,11 @@ def register_user(full_name, username, email, password, avatar, role="student",
     try:
         cursor.execute(
             adapt('''
-                INSERT INTO users (full_name, username, email, password, avatar, role, school, class_name, is_demo)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO users (full_name, username, email, password, avatar, role, school, class_name, is_demo, email_verified)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             '''),
             (full_name, username, email, hashed_password, avatar, role,
-             school, class_name, 1 if is_demo else 0),
+             school, class_name, 1 if is_demo else 0, 1 if email_verified else 0),
         )
         conn.commit()
         return True
@@ -177,7 +192,8 @@ def login_user(username, password):
            avatar,
            school,
            class_name,
-           is_demo
+           is_demo,
+           email_verified
     FROM users
     WHERE username = ?
 """), (username,))
@@ -189,7 +205,7 @@ def login_user(username, password):
         return None
 
     (user_id, full_name, stored_username, hashed_password, role, points, badges,
-     completed_lessons, avatar, school, class_name, is_demo) = row
+     completed_lessons, avatar, school, class_name, is_demo, email_verified) = row
 
     # verify password
     if not bcrypt.checkpw(password.encode(), hashed_password.encode()):
@@ -207,6 +223,7 @@ def login_user(username, password):
         'school': school or "",
         'class_name': class_name or "",
         'is_demo': bool(is_demo),
+        'email_verified': bool(email_verified),
     }
 
 def update_password(username, new_password):
@@ -536,6 +553,92 @@ def get_shared_progress(token):
 
 
 # =============================================================================
+# EMAIL VERIFICATION
+# Tokens are random, stored as hashes, expire, and are single-use.
+# =============================================================================
+
+def create_email_verification_token(username, email):
+    conn = _connect()
+    cur = conn.cursor()
+    cur.execute(adapt("SELECT username, email, email_verified FROM users WHERE username = ?"), (username,))
+    row = cur.fetchone()
+    if not row or row[1].strip().lower() != email.strip().lower() or bool(row[2]):
+        conn.close()
+        return None
+
+    cur.execute(adapt("DELETE FROM email_verifications WHERE username = ?"), (username,))
+    token = secrets.token_urlsafe(32)
+    expires_at = datetime.utcnow() + timedelta(hours=EMAIL_VERIFICATION_TTL_HOURS)
+    cur.execute(
+        adapt("INSERT INTO email_verifications (username, token_hash, expires_at, used) VALUES (?, ?, ?, 0)"),
+        (username, _hash_token(token), expires_at),
+    )
+    conn.commit()
+    conn.close()
+    return token
+
+
+def verify_email_token(token):
+    """Verify an email token once, using a conditional update to prevent replay races."""
+    if not token:
+        return False
+    token_hash = _hash_token(token)
+    conn = _connect()
+    cur = conn.cursor()
+    try:
+        cur.execute(adapt("SELECT username, expires_at, used FROM email_verifications WHERE token_hash = ?"),
+                    (token_hash,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return False
+        username, expires_at, used = row
+        if isinstance(expires_at, str):
+            try:
+                expires_at = datetime.fromisoformat(expires_at)
+            except ValueError:
+                conn.close()
+                return False
+        if used or expires_at < datetime.utcnow():
+            conn.close()
+            return False
+
+        cur.execute(adapt("UPDATE email_verifications SET used = 1 WHERE token_hash = ? AND used = 0"),
+                    (token_hash,))
+        if cur.rowcount != 1:
+            conn.rollback()
+            conn.close()
+            return False
+        cur.execute(adapt("UPDATE users SET email_verified = 1 WHERE username = ?"), (username,))
+        if cur.rowcount != 1:
+            conn.rollback()
+            conn.close()
+            return False
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def get_email_verification_status(school_name=None):
+    """Return account verification details, scoped to a linked school when provided."""
+    conn = _connect()
+    cur = conn.cursor()
+    query = "SELECT full_name, username, email, role, school, class_name, email_verified FROM users WHERE COALESCE(is_demo, 0) = 0"
+    if school_name:
+        cur.execute(adapt(query + " AND school = ? ORDER BY role, full_name"), (school_name,))
+    else:
+        cur.execute(query + " ORDER BY role, full_name")
+    rows = cur.fetchall()
+    conn.close()
+    return [{"full_name": r[0], "username": r[1], "email": r[2], "role": r[3],
+             "school": r[4] or "", "class_name": r[5] or "", "email_verified": bool(r[6])} for r in rows]
+
+
+# =============================================================================
 # PASSWORD RESET
 #
 # We never store the raw token — only a sha256 hash of it — the same way
@@ -605,22 +708,50 @@ def verify_reset_token(token):
 
 
 def consume_reset_token(token, new_password):
-    """Verify the token, set the new password, and mark the token used (one-time-use)."""
-    username = verify_reset_token(token)
-    if not username:
+    """Atomically consume a valid reset token and update the account password."""
+    if not token:
         return False
-
-    update_password(username, new_password)
-
+    token_hash = _hash_token(token)
     conn = _connect()
     cur = conn.cursor()
-    cur.execute(
-        adapt("UPDATE password_resets SET used = 1 WHERE token_hash = ?"),
-        (_hash_token(token),),
-    )
-    conn.commit()
-    conn.close()
-    return True
+    try:
+        cur.execute(adapt("SELECT username, expires_at, used FROM password_resets WHERE token_hash = ?"),
+                    (token_hash,))
+        row = cur.fetchone()
+        if not row:
+            conn.close()
+            return False
+        username, expires_at, used = row
+        if isinstance(expires_at, str):
+            try:
+                expires_at = datetime.fromisoformat(expires_at)
+            except ValueError:
+                conn.close()
+                return False
+        if used or expires_at < datetime.utcnow():
+            conn.close()
+            return False
+
+        # Conditional update makes token consumption single-use under concurrent requests.
+        cur.execute(adapt("UPDATE password_resets SET used = 1 WHERE token_hash = ? AND used = 0"),
+                    (token_hash,))
+        if cur.rowcount != 1:
+            conn.rollback()
+            conn.close()
+            return False
+        hashed = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+        cur.execute(adapt("UPDATE users SET password = ? WHERE username = ?"), (hashed, username))
+        if cur.rowcount != 1:
+            conn.rollback()
+            conn.close()
+            return False
+        conn.commit()
+        return True
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 # =============================================================================

@@ -31,6 +31,9 @@ invoice" flow instead of Checkout, so the app still works before Stripe
 is configured.
 """
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import hashlib
 import json
 import os

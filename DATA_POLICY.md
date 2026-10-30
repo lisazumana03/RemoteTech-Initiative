@@ -1,118 +1,93 @@
-# RemoteTech — Data Retention & Hosting Policy
+# RemoteTech — Privacy, Data Retention and Security Notice
 
-*Last updated: [fill in date before sending to a school]*
+**Document status:** Draft template — not approved legal advice. Complete the deployment-specific fields before sharing this document with a school or processing real learner data.
 
-This document is written to answer what a school's procurement or IT
-contact typically asks before signing off on a classroom tool. It
-describes what RemoteTech actually does today, based on the current
-codebase — not aspirational policy. Update it if the implementation
-changes.
+**Last reviewed:** [ENTER DATE]
+**Responsible organisation/operator:** [ENTER LEGAL NAME AND CONTACT DETAILS]
+**Privacy / Information Officer contact:** [ENTER MONITORED EMAIL AND POSTAL/PHYSICAL CONTACT DETAILS AS APPLICABLE]
+**Application URL:** [ENTER PRODUCTION URL]
 
-## 1. What personal information is collected
+## 1. Purpose and scope
 
-Per the POPIA notice already shown at registration (`register.py`):
+RemoteTech provides Python learning activities, quests, progress tracking, and school/teacher reporting. This notice describes the categories of information the application is designed to process. The operator must confirm these details against the deployed application and all connected providers before release.
 
-- Full name
-- Username
-- Email address
-- School name and class code (optional, self-reported)
-- Learning progress: points, badges, completed quests, time spent per
-  quest, last-active timestamp
+## 2. Personal information processed
 
-RemoteTech does **not** collect: ID numbers, dates of birth, home
-addresses, phone numbers, payment card details, or biometric data.
-Payment details for school licenses are handled entirely by Stripe —
-this app never sees or stores card numbers (see §5).
+Depending on the features used, RemoteTech may process:
 
-Passwords are hashed with bcrypt before storage; the plaintext password
-is never written to disk or logged.
+- Full name, username and email address.
+- Account role (learner or school administrator/teacher), school name and class code.
+- Password hashes, account verification status and time-limited password-reset/verification token hashes.
+- Learning records such as points, badges, completed quests, activity/time records, and feedback submitted by a user.
+- School licence metadata, such as school name, contact email, plan and hashed licence key.
+- Technical information in application, hosting, database, email-provider and payment-provider logs, depending on deployment configuration.
 
-## 2. Where data is hosted
+Passwords are hashed with bcrypt before storage. Verification and password-reset tokens are stored as SHA-256 hashes rather than raw tokens. Do not promise that no personal information appears in logs until the deployed logging configuration has been checked.
 
-- **Database:** by default, a local SQLite file (`remotetech.db`) for
-  development. In production, set the `DATABASE_URL` environment
-  variable to point at a hosted Postgres instance (see `db.py`) — for
-  example a managed Postgres add-on from Render or Railway.
-- **Region:** *[fill in — depends on which host/region you provision;
-  for a South African pilot, prefer a host with an EU or, if available,
-  an Africa-region data center, and state the actual region here once
-  chosen]*.
-- **Application hosting:** *[fill in — e.g. Render/Railway web service
-  running this Streamlit app]*.
-- **Backups:** *[fill in — most managed Postgres add-ons take automatic
-  daily backups with a retention window; state the provider's actual
-  backup retention period once you've chosen a host, e.g. "7 days of
-  automatic daily backups, provider-managed"]*.
-- **Subprocessors:** the hosting provider (database + app), and Stripe
-  for payment processing. No other third parties receive student data.
-  RemoteTech does not use student data for advertising, and does not
-  sell or share it with third parties, per the existing POPIA notice.
+## 3. Purposes and legal basis
 
-## 3. Retention period
+Information may be used to create and secure accounts, deliver lessons, save learning progress, support teacher reporting, operate school licences, recover accounts, respond to support/privacy requests, and maintain service security.
 
-- **Active accounts:** progress data is retained for as long as the
-  account is active, so a student's history is available to them and
-  their teacher across a school year.
-- **Inactive accounts:** *[decide and fill in a concrete number — e.g.
-  "accounts inactive for 24 months are flagged for deletion; the school
-  admin is notified before deletion occurs"]*. The admin dashboard
-  already surfaces students inactive 7+ days (`get_inactive_students`)
-  as an early-warning signal, not a deletion trigger.
-- **Demo/trial account:** the shared demo account's progress is never
-  persisted — it resets by design (`is_demo` handling in
-  `remote_tech_app.py`), so no personal data accumulates there.
-- **Password reset tokens:** expire after 30 minutes and are stored only
-  as a hash, never in plaintext (`remotetech_data.py`,
-  `RESET_TOKEN_TTL_MINUTES`).
-- **License keys** (school payment/activation): stored only as a hash,
-  same pattern as password reset tokens (`billing.py`).
+The operator and each participating school must document the applicable lawful basis for each processing purpose under POPIA. Do not rely on a generic checkbox as a substitute for assessing the correct lawful basis, especially for children's personal information. Obtain appropriate advice and establish the required authorisations and safeguards before onboarding learners.
 
-## 4. Deletion
+## 4. Children and school responsibilities
 
-A user (or a teacher/admin on their behalf) can request deletion at any
-time. This is already implemented end-to-end: the **Profile page** has a
-"Delete my account and all my data" control (`profile.py`) that calls
-`delete_user_data(username)` in `remotetech_data.py`, which removes the
-user's row and all associated progress, quest-time, and password-reset
-records from the database in one operation.
+RemoteTech may be used by children. Before a school pilot, document who determines the purposes and means of processing, who acts as operator/service provider, which school officials may access learner records, how parents/guardians and learners receive appropriate notices, and what authorisations are required by applicable law. Use age-appropriate notices and minimise collected information. Do not launch to children until these arrangements have been reviewed.
 
-Deletion requests from a school (e.g. end of contract, or a parent
-request under POPIA) can be actioned by a school's own admin account, or
-by RemoteTech operator on request, within *[fill in — e.g. "30 days"]*.
+## 5. Access, visibility and sharing
 
-## 5. Payments
+Learners can access their own account and learning progress. School/teacher administration features may expose learner progress for educational support; the operator must verify that access is restricted to the correct school and class before production use. Leaderboards and progress-sharing links can disclose learner information; explain these features to users and schools, provide suitable controls, and ensure shared links expire and can be revoked where supported.
 
-Card payments are processed by Stripe via a hosted Stripe Checkout page
-(`billing.py`, `pricing.py`). Card numbers and other cardholder data are
-entered directly into Stripe's page and never transit or touch
-RemoteTech's servers or database. RemoteTech stores only: the school
-name, a contact email, the plan purchased, and a hashed license key —
-never payment card details.
+## 6. Hosting and third-party providers — complete before release
 
-## 6. Security measures already in place
+- **Application host and region:** [ENTER PROVIDER, COUNTRY/REGION, AND SERVICE]
+- **Database provider and region:** [ENTER PROVIDER, COUNTRY/REGION, AND SERVICE]
+- **SMTP/email provider:** [ENTER PROVIDER AND PROCESSING REGION]
+- **Payment provider:** Stripe is integrated for school checkout; confirm the enabled account, data flows, contract and region before launch.
+- **Other subprocessors/logging/monitoring:** [LIST ALL THAT APPLY]
+- **Cross-border transfers:** [DOCUMENT WHETHER PERSONAL INFORMATION IS TRANSFERRED OUTSIDE SOUTH AFRICA AND THE SAFEGUARDS/LEGAL BASIS]
 
-- Passwords hashed with bcrypt (never stored or logged in plaintext).
-- Password reset and license-activation tokens stored as SHA-256 hashes,
-  single-use, time-limited.
-- Role-based access: only accounts with `role = "admin"` can view the
-  Admin Dashboard or other students' progress; students only ever see
-  their own data and a leaderboard scoped to their class.
-- Student-submitted code runs in an isolated sandboxed subprocess with a
-  restricted builtins list, wall-clock timeout, and (on POSIX hosts)
-  CPU/memory limits (`sandbox.py`) — this protects the hosting
-  infrastructure, not personal data directly, but is worth mentioning to
-  a school's IT reviewer since "students submit and run code" is
-  sometimes flagged as a risk on its own.
+Do not publish this policy with unresolved placeholders. Check provider agreements and applicable POPIA requirements for operators, security safeguards, and cross-border transfers.
 
-## 7. Contact
+## 7. Retention and deletion — set actual periods before release
 
-For a data access, correction, or deletion request, or any other privacy
-question, contact: *[fill in — an actual email address a school can use;
-POPIA requires this to be a real, monitored inbox]*.
+- **Active learner accounts:** [DEFINE RETENTION AND SCHOOL-YEAR TRANSITION RULE]
+- **Inactive accounts:** [DEFINE REVIEW/DELETION PERIOD AND NOTICE PROCESS]
+- **Support/feedback records:** [DEFINE PERIOD]
+- **Security/application logs:** [DEFINE PERIOD AND ACCESS CONTROLS]
+- **Backups:** [NAME PROVIDER, FREQUENCY, RETENTION WINDOW, AND DELETION BEHAVIOUR]
+- **Password-reset tokens:** expire after 30 minutes and are single-use.
+- **Email-verification tokens:** expire after 24 hours and are single-use.
+- **School licence and payment records:** [DEFINE RETENTION FOR ACCOUNTING, CONTRACTUAL, AND LEGAL NEEDS]
+
+The account deletion feature should be tested against all related tables, logs, exports, shared links, and backup retention. Explain any records that cannot be immediately removed and why. A deletion request is not complete merely because the main user row was deleted.
+
+## 8. Security safeguards
+
+Implemented controls include bcrypt password hashing, hashed time-limited reset/verification tokens, email verification for new public learner and school-admin registrations, and role checks for the administration page. These controls require ongoing testing and do not by themselves guarantee security or POPIA compliance.
+
+Before release, verify at minimum: access control and tenant/class separation; rate limiting and abuse controls; secure secret management; HTTPS; database permissions and backups; incident response; dependency updates; audit/log access; and isolation of learner-submitted Python code. A restricted built-ins list or subprocess alone is not a complete security boundary for arbitrary code execution.
+
+## 9. Data subject requests and complaints
+
+Provide a monitored channel for access, correction, deletion, objection, complaints and other applicable requests. Contact: **[ENTER MONITORED PRIVACY CONTACT]**. Document how identity is verified, how requests are logged, who responds, and applicable statutory deadlines. Do not promise a response period until the operator has approved and can meet it.
+
+## 10. Security incidents
+
+Maintain a written process to triage, contain, investigate, record and remediate suspected incidents. Determine when notification to the Information Regulator and affected data subjects is legally required, and who is authorised to make those notifications. Keep current contact details and an incident log.
+
+## 11. Updates and complaints
+
+This notice should be reviewed when the application, hosting, subprocessors, data categories, or purposes change. Publish the effective date and provide the current version to schools and users. Complaints and regulator contact details must be verified from official sources before publication.
 
 ---
-**Before sending this to a school:** fill in every `[fill in ...]`
-bracket above with your actual hosting provider, region, backup
-retention window, and contact email. A procurement reviewer will notice
-placeholder text — better to send this once it's concrete than to send
-it early and follow up with corrections.
+
+## Release sign-off checklist
+
+- [ ] Replace every `[ENTER ...]` / `[DEFINE ...]` placeholder.
+- [ ] Have South African privacy counsel or a suitably qualified adviser review the POPIA basis, children's information, school/operator agreements, and cross-border transfers.
+- [ ] Confirm actual hosting, email, payment, logging, and backup providers.
+- [ ] Test data export, correction, account deletion, and backup expiry.
+- [ ] Verify teacher/admin permissions are school-scoped.
+- [ ] Complete a documented security review, including the Python execution sandbox.
+- [ ] Publish a dated privacy notice and provide a monitored contact channel.

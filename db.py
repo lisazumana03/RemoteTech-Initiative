@@ -12,6 +12,9 @@ Query strings in remotetech_data.py are written with "?" placeholders
 automatically, so the calling code doesn't need two copies of every query.
 """
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()

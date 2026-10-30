@@ -1,7 +1,4 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
-from datetime import datetime
 
 pages = [
     st.Page("landing.py", title="About RemoteTech", url_path="about"),
@@ -12,6 +9,8 @@ pages = [
     st.Page("activate.py", title="Activate License", url_path="activate"),
     st.Page("forgot_password.py", title="Forgot Password", url_path="forgot_password"),
     st.Page("reset_password.py", title="Reset Password", url_path="reset_password"),
+    st.Page("verify_email.py", title="Verify Email", url_path="verify_email"),
+    st.Page("resend_verification.py", title="Resend Verification", url_path="resend_verification"),
     st.Page("share.py", title="Shared Progress", url_path="share"),
     st.Page("remote_tech_app.py", title="Main App"),
     st.Page("profile.py", title="User Profile"),

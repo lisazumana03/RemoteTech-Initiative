@@ -1,6 +1,8 @@
 import streamlit as st
+import os
 
-from remotetech_data import init_db, register_user
+from remotetech_data import init_db, register_user, create_email_verification_token, EMAIL_VERIFICATION_TTL_HOURS
+from email_utils import send_email, is_configured
 import billing
 
 init_db()
@@ -42,11 +44,22 @@ if st.button("Register", type="primary"):
             popia_consent=True,
             school=license_record["school_name"],
             class_name=class_name.strip(),
+            email_verified=False,
         )
         if success:
             billing.redeem_seat(license_record["id"])
-            st.success(f"🎉 Welcome, {full_name}! Your admin account for {license_record['school_name']} is ready.")
-            st.info("You can now log in below.")
+            token = create_email_verification_token(username.strip(), email.strip())
+            base_url = os.environ.get("APP_BASE_URL", "").rstrip("/")
+            verify_link = f"{base_url}/verify_email?token={token}" if base_url and token else ""
+            sent = bool(token and verify_link and is_configured() and send_email(
+                email.strip(), "Verify your RemoteTech school administrator email",
+                f"Hi {full_name},\n\nVerify your email to activate your RemoteTech school administrator account.\n\n"
+                f"Open this link within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verify_link}\n\n"
+                "If you did not create this account, ignore this email."
+            ))
+            st.success(f"Account created for {license_record['school_name']}. Verify your email before logging in.")
+            if not sent:
+                st.warning("Verification email could not be sent. Please contact the application administrator. The verification link is not displayed here.")
         else:
             st.error("That username or email is already registered.")
 

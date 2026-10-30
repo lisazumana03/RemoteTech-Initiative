@@ -34,37 +34,19 @@ if st.button("Send Reset Link", type="primary"):
         )
 
         if token:
-            reset_link = (
-                f"{APP_BASE_URL}/reset_password?token={token}"
-                if APP_BASE_URL else
-                f"reset_password?token={token}"
-            )
+            reset_link = f"{APP_BASE_URL}/reset_password?token={token}" if APP_BASE_URL else ""
+            emailed = bool(reset_link and is_configured() and send_email(
+                to_address=email.strip(),
+                subject="RemoteTech password reset",
+                body=(f"Hi,\n\nA password reset was requested for the RemoteTech account '{username}'.\n\n"
+                      f"Reset your password within {RESET_TOKEN_TTL_MINUTES} minutes:\n{reset_link}\n\n"
+                      "If you did not request this, ignore this email.")
+            ))
+            # Do not show account-dependent success/failure details here; that
+            # would let visitors infer whether a username/email pair exists.
+            # Links are never displayed in the browser.
 
-            emailed = False
-            if is_configured():
-                emailed = send_email(
-                    to_address=email.strip(),
-                    subject="RemoteTech password reset",
-                    body=(
-                        f"Hi,\n\nSomeone (hopefully you!) requested a password reset "
-                        f"for the RemoteTech account '{username}'.\n\n"
-                        f"Reset your password here (valid {RESET_TOKEN_TTL_MINUTES} minutes):\n"
-                        f"{reset_link}\n\n"
-                        "If you didn't request this, you can safely ignore this email."
-                    ),
-                )
-
-            if not emailed:
-                # No mail server configured (or the send failed) — this is expected
-                # for a small pilot deployment without email infra set up yet.
-                # Show the link directly so a teacher/admin can pass it along
-                # to the student securely (in person, or via a trusted channel).
-                st.warning(
-                    "📧 Email isn't configured on this deployment yet, so here's your "
-                    "reset link directly. Please don't share it — anyone with this "
-                    "link can reset the password."
-                )
-                st.code(reset_link, language=None)
+        st.caption("If you cannot receive account emails, contact your application administrator.")
 
 st.divider()
 if st.button("⬅️ Back to Login"):

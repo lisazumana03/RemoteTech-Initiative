@@ -26,3 +26,6 @@ remotetech.db
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Keep the safe configuration template in source control
+!.env.example
