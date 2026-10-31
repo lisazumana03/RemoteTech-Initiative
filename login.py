@@ -70,26 +70,13 @@ with col_forgot:
 if login_clicked:
     user = login_user(username, password)
 
-    if user and not user.get("email_verified", True) and not user.get("is_demo"):
-        st.error("Please verify your email address before logging in.")
-        st.info("Use the Resend Verification Email option below if you need another link.")
-    elif user:
+    if user:
         _start_session(user)
         st.success(f"Welcome back, {user['full_name']}!")
         st.switch_page("remote_tech_app.py")
 
     else:
         st.error("Invalid username or password.")
-
-st.divider()
-st.markdown("Didn't receive your verification email?")
-if st.button("Resend Verification Email"):
-    st.switch_page("resend_verification.py")
-
-st.divider()
-st.markdown("Didn't receive your verification email?")
-if st.button("Resend Verification Email"):
-    st.switch_page("resend_verification.py")
 
 st.divider()
 st.markdown("### 🎮 Just want to look around first?")

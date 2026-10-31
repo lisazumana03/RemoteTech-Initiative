@@ -6,7 +6,7 @@ RemoteTech is a Streamlit learning application for Python quests, learner progre
 
 - Python 3.11 or another Python version supported by the pinned dependencies in `requirements.txt`.
 - SQLite for local development, or PostgreSQL for hosted deployments.
-- SMTP credentials for email verification, password recovery, and email-sharing features.
+- SMTP credentials only if you want password recovery emails and progress-sharing emails.
 
 ## Local setup (Windows PowerShell)
 
@@ -26,17 +26,15 @@ RemoteTech is a Streamlit learning application for Python quests, learner progre
    ```powershell
    python seed_admin.py
    ```
-   The one-time seed script creates an administrator account as email-verified for initial setup. Use a real, controlled administrator email address.
+   The one-time seed script creates an administrator account for initial setup. Use a real, controlled administrator email address.
 6. Start the app:
    ```powershell
    streamlit run main.py
    ```
 
-## Email verification and password recovery
+## Account registration and password recovery
 
-Public learner and school-admin registrations require email verification before login. Configure `APP_BASE_URL` to the public base URL of the deployed Streamlit app and configure SMTP variables in the deployment environment. Verification links expire after 24 hours; password reset links expire after 30 minutes. Tokens are stored as hashes and are single-use. For safety, reset/verification links are never displayed in the UI if email delivery is unavailable.
-
-Existing accounts are migrated as verified to avoid unexpectedly locking out users when upgrading. New public registrations are unverified until they follow their emailed link.
+Learner and school-admin accounts can log in immediately after successful registration; email verification is not part of the account activation flow. SMTP remains optional and is used only for password-reset and progress-sharing emails. Password reset links expire after 30 minutes and are single-use.
 
 ## Database
 
@@ -56,7 +54,7 @@ Run syntax checks with:
 python -m compileall -q .
 ```
 
-Run automated tests (once the test suite is installed/created) with:
+Run the automated tests with:
 ```powershell
 pytest
 ```

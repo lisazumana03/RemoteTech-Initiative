@@ -1,7 +1,5 @@
 import streamlit as st
-from remotetech_data import init_db, register_user, create_email_verification_token, EMAIL_VERIFICATION_TTL_HOURS
-from email_utils import send_email, is_configured
-import os
+from remotetech_data import init_db, register_user
 
 init_db()
 
@@ -37,8 +35,6 @@ with st.expander("📄 Privacy Notice (POPIA) — please read before registering
 
 **Why it is used:** to create and secure your account, save learning progress, and let authorised school staff support your learning. Your display name may appear on a class leaderboard, depending on the feature and school setup.
 
-**Email verification:** new accounts must verify the email address before logging in. Verification links expire after 24 hours.
-
 **Sharing and providers:** RemoteTech does not sell learner data or use it for advertising. Hosting, email, and payment providers may process information needed to operate the service; the current providers and regions must be listed in the published Privacy Policy.
 
 **Your rights:** you may request access to, correction of, or deletion of your information through the school's authorised contact or the RemoteTech privacy contact listed in the published policy. Deletion may be subject to applicable legal retention obligations and backup schedules.
@@ -71,21 +67,9 @@ if st.button("Register", type="primary"):
             avatar=avatar,  
             popia_consent=True,
             class_name=class_name.strip(),
-            email_verified=False,
         )
         if success:
-            base_url = os.environ.get("APP_BASE_URL", "").rstrip("/")
-            token = create_email_verification_token(username.strip(), email.strip())
-            verify_link = f"{base_url}/verify_email?token={token}" if base_url and token else ""
-            sent = bool(token and verify_link and is_configured() and send_email(
-                email.strip(), "Verify your RemoteTech email address",
-                f"Hi {full_name},\n\nPlease verify your email address to activate your RemoteTech account.\n\n"
-                f"Open this link within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verify_link}\n\n"
-                "If you did not create this account, you can ignore this email."
-            ))
-            st.success("Account created. Check your email for a verification link before logging in.")
-            if not sent:
-                st.warning("Verification email could not be sent. Please contact the school/application administrator to configure email delivery or request a new verification email. For safety, the verification link is not displayed here.")
+            st.success("Account created successfully. You can now log in.")
         else:
             st.error("That username or email is already registered.")
 

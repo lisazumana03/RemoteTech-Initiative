@@ -17,12 +17,12 @@ Depending on the features used, RemoteTech may process:
 
 - Full name, username and email address.
 - Account role (learner or school administrator/teacher), school name and class code.
-- Password hashes, account verification status and time-limited password-reset/verification token hashes.
+- Password hashes and time-limited password-reset token hashes.
 - Learning records such as points, badges, completed quests, activity/time records, and feedback submitted by a user.
 - School licence metadata, such as school name, contact email, plan and hashed licence key.
 - Technical information in application, hosting, database, email-provider and payment-provider logs, depending on deployment configuration.
 
-Passwords are hashed with bcrypt before storage. Verification and password-reset tokens are stored as SHA-256 hashes rather than raw tokens. Do not promise that no personal information appears in logs until the deployed logging configuration has been checked.
+Passwords are hashed with bcrypt before storage. Password-reset tokens are stored as SHA-256 hashes rather than raw tokens. Do not promise that no personal information appears in logs until the deployed logging configuration has been checked.
 
 ## 3. Purposes and legal basis
 
@@ -57,14 +57,13 @@ Do not publish this policy with unresolved placeholders. Check provider agreemen
 - **Security/application logs:** [DEFINE PERIOD AND ACCESS CONTROLS]
 - **Backups:** [NAME PROVIDER, FREQUENCY, RETENTION WINDOW, AND DELETION BEHAVIOUR]
 - **Password-reset tokens:** expire after 30 minutes and are single-use.
-- **Email-verification tokens:** expire after 24 hours and are single-use.
 - **School licence and payment records:** [DEFINE RETENTION FOR ACCOUNTING, CONTRACTUAL, AND LEGAL NEEDS]
 
 The account deletion feature should be tested against all related tables, logs, exports, shared links, and backup retention. Explain any records that cannot be immediately removed and why. A deletion request is not complete merely because the main user row was deleted.
 
 ## 8. Security safeguards
 
-Implemented controls include bcrypt password hashing, hashed time-limited reset/verification tokens, email verification for new public learner and school-admin registrations, and role checks for the administration page. These controls require ongoing testing and do not by themselves guarantee security or POPIA compliance.
+Implemented controls include bcrypt password hashing, hashed time-limited password-reset tokens and role checks for the administration page. These controls require ongoing testing and do not by themselves guarantee security or POPIA compliance.
 
 Before release, verify at minimum: access control and tenant/class separation; rate limiting and abuse controls; secure secret management; HTTPS; database permissions and backups; incident response; dependency updates; audit/log access; and isolation of learner-submitted Python code. A restricted built-ins list or subprocess alone is not a complete security boundary for arbitrary code execution.
 

@@ -9,15 +9,10 @@ from remotetech_data import (
     get_inactive_students,
     get_quest_completion_stats,
     get_all_classes,
-    get_email_verification_status,
-    create_email_verification_token,
-    EMAIL_VERIFICATION_TTL_HOURS,
 )
 import quests_store
 import billing
 from branding import get_branding, save_branding
-from email_utils import send_email, is_configured
-import os
 
 st.set_page_config(page_title="Admin Dashboard", page_icon="🛡️", layout="wide")
 
@@ -58,41 +53,6 @@ if st.button("Save Branding", type="primary"):
         st.success("Branding saved. Learners will see it on their next page load.")
 
 st.divider()
-
-# ====================== EMAIL VERIFICATION ======================
-st.subheader("📧 Account Email Verification")
-st.caption("Verification status for non-demo accounts. Password recovery is available to all roles through the Forgot Password page.")
-verification_rows = get_email_verification_status(st.session_state.get("school") or None)
-if verification_rows:
-    st.dataframe([{
-        "Name": r["full_name"], "Username": r["username"], "Email": r["email"],
-        "Role": r["role"], "School": r["school"], "Class": r["class_name"],
-        "Email verified": "Yes" if r["email_verified"] else "No",
-    } for r in verification_rows], use_container_width=True, hide_index=True)
-    unverified = [r for r in verification_rows if not r["email_verified"]]
-    if unverified:
-        with st.expander("Resend verification email"):
-            account_names = [f'{r["username"]} — {r["email"]}' for r in unverified]
-            chosen = st.selectbox("Unverified account", account_names)
-            selected = unverified[account_names.index(chosen)]
-            if st.button("Send verification email to selected account"):
-                token = create_email_verification_token(selected["username"], selected["email"])
-                base_url = os.environ.get("APP_BASE_URL", "").rstrip("/")
-                verify_link = f"{base_url}/verify_email?token={token}" if token and base_url else ""
-                sent = bool(verify_link and is_configured() and send_email(
-                    selected["email"], "Verify your RemoteTech email address",
-                    f'Hello {selected["full_name"]},\n\nAn administrator requested a verification email for your RemoteTech account.\n\n'
-                    f'Verify within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verify_link}\n\nIf you did not expect this, contact your school administrator.'
-                ))
-                if sent:
-                    st.success("Verification email sent.")
-                else:
-                    st.error("Email could not be sent. Check APP_BASE_URL and SMTP configuration. The verification link is not displayed.")
-else:
-    st.info("No accounts found.")
-
-st.divider()
-
 
 # ====================== CLASS SCOPE ======================
 # Admins/teachers only see their own class by default (matching the class
